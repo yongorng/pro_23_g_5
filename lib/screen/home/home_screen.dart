@@ -1,53 +1,56 @@
 import 'package:carousel_slider/carousel_slider.dart';
 import 'package:flutter/material.dart';
-import 'package:pro_23/model/post_model.dart';
-import 'package:pro_23/model/slider_model.dart';
+import 'package:get/get.dart';
+import '../../controller/post_controller.dart';
+import '../../model/slider_model.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final PostController postController = Get.find<PostController>();
+
     final List<SliderModel> banners = <SliderModel>[
       SliderModel(
-        title: 'Welcome to GetX Basic',
+        title: 'Welcome to GetX Basic'.tr,
         subtitle: 'Learn Flutter with GetX',
         imageUrl: 'https://picsum.photos/800/400?random=1',
       ),
       SliderModel(
-        title: 'Flutter Development',
+        title: 'Flutter Development'.tr,
         subtitle: 'Build modern mobile applications',
         imageUrl: 'https://picsum.photos/800/400?random=2',
       ),
       SliderModel(
-        title: 'GetX State Management',
+        title: 'GetX State Management'.tr,
         subtitle: 'Simple and powerful state management',
         imageUrl: 'https://picsum.photos/800/400?random=3',
       ),
     ];
 
-    final List<PostModel> latestPosts = <PostModel>[
-      PostModel(
-        title: 'Getting Started with Flutter',
-        imageUrl: 'https://picsum.photos/200/200?random=10',
-      ),
-      PostModel(
-        title: 'Understanding GetX',
-        imageUrl: 'https://picsum.photos/200/200?random=11',
-      ),
-      PostModel(
-        title: 'Flutter Navigation',
-        imageUrl: 'https://picsum.photos/200/200?random=12',
-      ),
-    ];
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.menu, color: Colors.black),
+          onPressed: () {
+            Scaffold.of(context).openDrawer();
+          },
+        ),
+        title: Text(
+          'Home'.tr,
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.only(bottom: 20),
-
           children: <Widget>[
             // =========================
-            // Carousel
+            // Carousel Slider
             // =========================
             CarouselSlider(
               items: banners.map((SliderModel banner) {
@@ -62,9 +65,6 @@ class HomeScreen extends StatelessWidget {
                   child: Stack(
                     fit: StackFit.expand,
                     children: <Widget>[
-                      // =========================
-                      // Image
-                      // =========================
                       Image.network(
                         banner.fullImageUrl,
                         fit: BoxFit.cover,
@@ -75,10 +75,6 @@ class HomeScreen extends StatelessWidget {
                           );
                         },
                       ),
-
-                      // =========================
-                      // Dark Overlay
-                      // =========================
                       const DecoratedBox(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
@@ -88,10 +84,6 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-
-                      // =========================
-                      // Banner Text
-                      // =========================
                       Positioned(
                         left: 16,
                         right: 16,
@@ -109,9 +101,7 @@ class HomeScreen extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-
-                            if (banner.subtitle != null &&
-                                banner.subtitle!.isNotEmpty)
+                            if (banner.subtitle != null && banner.subtitle!.isNotEmpty)
                               Text(
                                 banner.subtitle!,
                                 style: const TextStyle(
@@ -128,7 +118,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                 );
               }).toList(),
-
               options: CarouselOptions(
                 height: 190,
                 viewportFraction: 0.88,
@@ -143,7 +132,7 @@ class HomeScreen extends StatelessWidget {
             // =========================
             // Latest Posts Title
             // =========================
-            Padding(
+            const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
               child: Text(
                 'Latest Posts',
@@ -154,74 +143,123 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 8),
 
             // =========================
-            // Post List
+            // Posts List (From API via Controller)
             // =========================
-            ...latestPosts.map((PostModel post) {
-              final String url = post.fullImageUrl;
+            Obx(() {
 
-              return Card(
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Row(
-                    children: <Widget>[
-                      // =========================
-                      // Post Image
-                      // =========================
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: SizedBox(
-                          width: 56,
-                          height: 56,
-                          child: Image.network(
-                            url,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) {
-                              return const ColoredBox(
+              if (postController.isLoading.value) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              final allPosts = postController.posts;
+
+
+              if (allPosts.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('No posts available yet'),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: allPosts.length,
+                itemBuilder: (context, index) {
+                  final post = allPosts[index];
+
+                  return Card(
+                    margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: <Widget>[
+                          // Post Image
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              width: 60,
+                              height: 60,
+                              child: (post.imageUrl != null && post.imageUrl!.isNotEmpty)
+                                  ? Image.network(
+                                post.imageUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) {
+                                  return const ColoredBox(
+                                    color: Colors.greenAccent,
+                                    child: Icon(Icons.article_outlined),
+                                  );
+                                },
+                              )
+                                  : const ColoredBox(
                                 color: Colors.greenAccent,
                                 child: Icon(Icons.article_outlined),
-                              );
-                            },
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
+                          const SizedBox(width: 16),
 
-                      const SizedBox(width: 16),
-
-                      // =========================
-                      // Post Information
-                      // =========================
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              post.title,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          // Post Info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: <Widget>[
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        post.title,
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (post.status == 'draft')
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.shade50,
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'Draft',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade800,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  (post.author is String ? post.author : (post.author != null ? post.author.toString() : 'Unknown')) ?? 'Unknown',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-
-                            const SizedBox(height: 4),
-
-                            Text(
-                              post.author?.displayName ?? 'Unknown',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             }),
           ],
