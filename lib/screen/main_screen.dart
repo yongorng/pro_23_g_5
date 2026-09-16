@@ -1,59 +1,63 @@
 import 'package:flutter/material.dart';
-import 'package:pro_23/screen/home/home_screen.dart';
-import 'package:pro_23/screen/post/post_screen.dart';
-import 'package:pro_23/screen/setting/setting_screen.dart';
-import 'package:pro_23/screen/user/user_screen.dart';
-import 'package:pro_23/screen/custom_drawer.dart';
 import 'package:get/get.dart';
 
-class MainScreen extends StatefulWidget {
+import '../controller/main_controller.dart';
+import '../controller/user_controller.dart';
+import 'home/home_screen.dart';
+import 'post/post_screen.dart';
+import 'user/user_screen.dart';
+import 'setting/setting_screen.dart';
+import 'custom_drawer.dart';
+import '../theme/app_color.dart';
+
+class MainScreen extends StatelessWidget {
   const MainScreen({super.key});
 
   @override
-  State<MainScreen> createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
-  int currentIndex = 0;
-  @override
   Widget build(BuildContext context) {
+
+    final MainController controller = Get.put(MainController());
+    Get.put(UserController());
+
     return Scaffold(
-      drawer: CustomDrawer(),
-      body: IndexedStack(
-        index: currentIndex,
-        children: [HomeScreen(), PostScreen(), UserScreen(), SettingScreen()],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: currentIndex,
-        indicatorColor: Colors.green,
-        onDestinationSelected: (index) {
-          setState(() {
-            currentIndex = index;
-          });
-        },
+      drawer: const CustomDrawer(),
+      body: Obx(() => IndexedStack(
+        index: controller.currentIndex.value,
+        children: const [
+          HomeScreen(),
+          PostScreen(),
+          UserScreen(),
+          SettingScreen(),
+        ],
+      )),
+      bottomNavigationBar: Obx(() => NavigationBar(
+        selectedIndex: controller.currentIndex.value,
+        backgroundColor: AppColor.surface,
+        indicatorColor: AppColor.primary.withValues(alpha: 0.2),
+        onDestinationSelected: controller.changeTab,
         destinations: [
           NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home, color: AppColor.primary),
             label: 'Home'.tr,
           ),
           NavigationDestination(
-            icon: Icon(Icons.article_outlined),
-            selectedIcon: Icon(Icons.article),
+            icon: const Icon(Icons.article_outlined),
+            selectedIcon: const Icon(Icons.article, color: AppColor.primary),
             label: 'Post'.tr,
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_2_outlined),
-            selectedIcon: Icon(Icons.person),
+            icon: const Icon(Icons.person_2_outlined),
+            selectedIcon: const Icon(Icons.person, color: AppColor.primary),
             label: 'User'.tr,
           ),
           NavigationDestination(
-            icon: Icon(Icons.settings_outlined),
-            selectedIcon: Icon(Icons.settings),
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: const Icon(Icons.settings, color: AppColor.primary),
             label: 'Setting'.tr,
           ),
         ],
-      ),
+      )),
     );
   }
 }

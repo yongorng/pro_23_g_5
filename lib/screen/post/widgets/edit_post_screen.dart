@@ -1,31 +1,54 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 
-import '../../controller/post_controller.dart';
-import '../../model/post_model.dart';
-import '../../theme/app_color.dart';
+import '../../../controller/post_controller.dart';
+import '../../../model/post_model.dart';
+import '../../../theme/app_color.dart';
 
-class CreatePostScreen extends StatefulWidget {
-  const CreatePostScreen({super.key});
+class EditPostScreen extends StatefulWidget {
+  final PostModel post;
+
+  const EditPostScreen({super.key, required this.post});
 
   @override
-  State<CreatePostScreen> createState() => _CreatePostScreenState();
+  State<EditPostScreen> createState() => _EditPostScreenState();
 }
 
-class _CreatePostScreenState extends State<CreatePostScreen> {
+class _EditPostScreenState extends State<EditPostScreen> {
   final PostController controller = Get.find<PostController>();
   final ImagePicker _picker = ImagePicker();
 
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descController = TextEditingController();
+  late TextEditingController _titleController;
+  late TextEditingController _descController;
   final RxBool _isPublished = true.obs;
-  final RxString _imagePath = RxString('');
-  final Rx<Uint8List?> _imageBytes = Rx<Uint8List?>(null);
   final RxBool _isUploading = false.obs;
+  final RxString _imagePath = RxString('');
+
+  // ✅ ៣. បន្ថែម Variable សម្រាប់រក្សាទុករូបភាពជា Bytes (សម្រាប់ Web)
+  final Rx<Uint8List?> _imageBytes = Rx<Uint8List?>(null);
+  File? _imageFile;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.post.title);
+    _descController = TextEditingController(text: widget.post.description);
+    _isPublished.value = widget.post.status == 'published';
+    if (widget.post.imageUrl != null && widget.post.imageUrl!.isNotEmpty) {
+      _imagePath.value = widget.post.imageUrl!;
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(
@@ -36,39 +59,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     );
 
     if (image != null) {
+      // ✅ ៤. ពិនិត្យមើលថាតើកំពុងរត់លើ Web ឬ Mobile
       if (kIsWeb) {
         final bytes = await image.readAsBytes();
         _imageBytes.value = bytes;
         _imagePath.value = image.path;
-        debugPrint('🌐 Web Image selected');
       } else {
+        _imageFile = File(image.path);
         _imagePath.value = image.path;
-        debugPrint('📱 Mobile Image selected: ${image.path}');
       }
     }
   }
 
-  Future<void> _takePhoto() async {
-    if (kIsWeb) {
-      Get.snackbar('Notice', 'Camera is not supported on Web',
-          backgroundColor: AppColor.warning);
-      return;
-    }
-
-    final XFile? image = await _picker.pickImage(
-      source: ImageSource.camera,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
-
-    if (image != null) {
-      _imagePath.value = image.path;
-      debugPrint('📷 Photo taken: ${image.path}');
-    }
-  }
-
-  Future<void> _createPost() async {
+  Future<void> _updatePost() async {
     if (_titleController.text.isEmpty) {
       Get.snackbar('Error', 'Please enter a title',
           snackPosition: SnackPosition.BOTTOM,
@@ -80,42 +83,34 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
     _isUploading.value = true;
 
     try {
-      final newPost = PostModel(
+      final updatedPost = PostModel(
+        id: widget.post.id,
         title: _titleController.text,
         description: _descController.text,
         status: _isPublished.value ? 'published' : 'draft',
-        date: DateTime.now().toString(),
+        date: widget.post.date,
+        imageUrl: widget.post.imageUrl,
       );
 
-      // 1. Create Post
-      final createdPost = await controller.createPostDirect(newPost);
-      debugPrint('✅ Post created with ID: ${createdPost.id}');
+      await controller.updatePost(updatedPost);
 
-      // ✅ ២. Upload Image (កែត្រឹមត្រូវសម្រាប់ទាំង Web និង Mobile)
-      if (createdPost.id != null) {
+
+      if (widget.post.id != null) {
         if (kIsWeb && _imageBytes.value != null) {
-          // សម្រាប់ Web: ប្រើ Bytes
-          await controller.uploadPostImageFromBytes(createdPost.id!, _imageBytes.value!);
-          debugPrint('✅ Image uploaded successfully (Web)');
-        } else if (_imagePath.value.isNotEmpty) {
-          // សម្រាប់ Mobile: ប្រើ File
-          final imageFile = File(_imagePath.value);
-          await controller.uploadPostImage(createdPost.id!, imageFile);
-          debugPrint('✅ Image uploaded successfully (Mobile)');
+          await controller.uploadPostImageFromBytes(widget.post.id!, _imageBytes.value!);
+        } else if (_imageFile != null) {
+          await controller.uploadPostImage(widget.post.id!, _imageFile!);
         }
       }
 
-      // 3. Refresh list immediately to update UI
-      await controller.fetchPosts();
-
-      Get.snackbar('Success', 'Post created successfully',
+      Get.snackbar('Success', 'Post updated successfully',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: AppColor.success,
           colorText: AppColor.textOnPrimary);
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to create post: $e',
+      Get.snackbar('Error', 'Failed to update post: $e',
           snackPosition: SnackPosition.BOTTOM,
           backgroundColor: AppColor.error,
           colorText: AppColor.textOnPrimary);
@@ -130,14 +125,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       backgroundColor: AppColor.background,
       appBar: AppBar(
         backgroundColor: AppColor.primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColor.textOnPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
         title: const Text(
-          'Create Post',
-          style: TextStyle(color: AppColor.textOnPrimary, fontWeight: FontWeight.bold),
+          'Edit Post',
+          style: TextStyle(color: AppColor.textOnPrimary),
         ),
         centerTitle: true,
       ),
@@ -146,35 +136,56 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ✅ ៦. Image Section ដែលគាំទ្រទាំង Web (Image.memory) និង Mobile (Image.file)
             Obx(() => GestureDetector(
-              onTap: () => _showImageSourceDialog(),
+              onTap: _pickImage,
               child: Container(
                 width: double.infinity,
                 height: 200,
+                margin: const EdgeInsets.only(bottom: 24),
                 decoration: BoxDecoration(
                   color: AppColor.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColor.primary.withValues(alpha: 0.3),
-                  ),
+                  border: Border.all(color: AppColor.primary.withValues(alpha: 0.3)),
                 ),
-                child: _imagePath.value.isNotEmpty || (kIsWeb && _imageBytes.value != null)
+                child: _imageFile != null || _imageBytes.value != null || _imagePath.value.isNotEmpty
                     ? ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: kIsWeb && _imageBytes.value != null
-                      ? Image.memory(_imageBytes.value!, fit: BoxFit.cover)
-                      : (!kIsWeb && _imagePath.value.isNotEmpty)
-                      ? Image.file(File(_imagePath.value), fit: BoxFit.cover)
-                      : const SizedBox(), // Fallback
+                      ? Image.memory(
+                    _imageBytes.value!,
+                    fit: BoxFit.cover,
+                  )
+                      : _imageFile != null
+                      ? Image.file(
+                    _imageFile!,
+                    fit: BoxFit.cover,
+                  )
+                      : Image.network(
+                    _imagePath.value,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Center(
+                        child: Icon(
+                          Icons.add_photo_alternate_outlined,
+                          size: 50,
+                          color: AppColor.primary,
+                        ),
+                      );
+                    },
+                  ),
                 )
                     : const Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.add_photo_alternate_outlined,
-                        size: 50, color: AppColor.primary),
+                    Icon(
+                      Icons.add_photo_alternate_outlined,
+                      size: 50,
+                      color: AppColor.primary,
+                    ),
                     SizedBox(height: 8),
                     Text(
-                      'Tap to select an image',
+                      'Tap to change image',
                       style: TextStyle(color: AppColor.textSecondary),
                     ),
                   ],
@@ -185,13 +196,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             const SizedBox(height: 24),
 
             const Text('Title',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColor.textPrimary)),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColor.textPrimary)),
             const SizedBox(height: 8),
             TextField(
               controller: _titleController,
               decoration: InputDecoration(
-                hintText: 'My awesome post',
-                prefixIcon: const Icon(Icons.title, color: AppColor.primary),
+                hintText: 'Post title',
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: AppColor.primary),
@@ -204,7 +217,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             const SizedBox(height: 16),
 
             const Text('Content',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColor.textPrimary)),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColor.textPrimary)),
             const SizedBox(height: 8),
             TextField(
               controller: _descController,
@@ -225,13 +241,17 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Published',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColor.textPrimary)),
+                    Text('Published',
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: AppColor.textPrimary)),
                     Text('Visible to everyone',
-                        style: TextStyle(color: AppColor.textSecondary, fontSize: 12)),
+                        style: TextStyle(
+                            color: AppColor.textSecondary, fontSize: 12)),
                   ],
                 ),
                 Obx(() => Switch(
@@ -248,7 +268,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _isUploading.value ? null : _createPost,
+                onPressed: _isUploading.value ? null : _updatePost,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColor.primary,
                   shape: RoundedRectangleBorder(
@@ -268,17 +288,19 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                       ),
                     ),
                     SizedBox(width: 12),
-                    Text('Creating...',
+                    Text('Updating...',
                         style: TextStyle(color: AppColor.textOnPrimary)),
                   ],
                 )
                     : const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.check, color: AppColor.textOnPrimary),
+                    Icon(Icons.save, color: AppColor.textOnPrimary),
                     SizedBox(width: 8),
-                    Text('Create Post',
-                        style: TextStyle(color: AppColor.textOnPrimary, fontSize: 16)),
+                    Text('Update Post',
+                        style: TextStyle(
+                            color: AppColor.textOnPrimary,
+                            fontSize: 16)),
                   ],
                 ),
               ),
@@ -287,54 +309,5 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         ),
       ),
     );
-  }
-
-  void _showImageSourceDialog() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Wrap(
-          children: [
-            ListTile(
-              leading: const Icon(Icons.photo_library, color: AppColor.primary),
-              title: const Text('Select from Gallery'),
-              onTap: () {
-                Navigator.pop(context);
-                _pickImage();
-              },
-            ),
-            if (!kIsWeb)
-              ListTile(
-                leading: const Icon(Icons.camera_alt, color: AppColor.primary),
-                title: const Text('Take a Photo'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _takePhoto();
-                },
-              ),
-            if (_imagePath.value.isNotEmpty || (kIsWeb && _imageBytes.value != null))
-              ListTile(
-                leading: const Icon(Icons.delete, color: AppColor.error),
-                title: const Text('Remove Image',
-                    style: TextStyle(color: AppColor.error)),
-                onTap: () {
-                  _imagePath.value = '';
-                  _imageBytes.value = null;
-                  Navigator.pop(context);
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
-    _imagePath.close();
-    _imageBytes.close();
-    super.dispose();
   }
 }

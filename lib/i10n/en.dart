@@ -5,17 +5,12 @@ const Map<String, String> en = {
   'User': 'User',
   'Setting': 'Setting',
 
-  // Home
+  // Home Screen
   'Latest_Posts': 'Latest Posts',
-  'Getting_Started_Flutter': 'Getting Started with Flutter',
-  'Understanding_Getx': 'Understanding GetX',
-  'Flutter_Navigation': 'Flutter Navigation',
-  'Unknown': 'Unknown',
-  'Getx_State_Management': 'GetX State Management',
-  'Simple_and_powerful_state_management':
-  'Simple and powerful state management',
+  'Welcome_to_GetX_Basic': 'Welcome to GetX Basic',
+  'Learn_Flutter_with_GetX': 'Learn Flutter with GetX',
 
-  // Drawer
+  // Drawer Menu
   'Users': 'Users',
   'New_user': 'New user',
   'language': 'Language',
@@ -23,8 +18,8 @@ const Map<String, String> en = {
   'Online': 'Online',
   'Logout': 'Logout',
 
-  // Language
+  // Language Dialog
+  'select_language': 'Select Language',
   'english': 'English',
   'khmer': 'Khmer',
-  'select_language': 'Select Language',
 };

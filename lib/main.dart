@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:pro_23/screen/main_screen.dart';
 import 'package:get/get.dart';
-import 'i10n/app_translation.dart';
+
+// Import Screens
+import 'screen/auth/login_screen.dart';
+import 'screen/main_screen.dart';
+
+// Import Controller & Theme
 import 'controller/post_controller.dart';
+import 'i10n/app_translation.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,19 +23,23 @@ class MyApp extends StatelessWidget {
       title: 'Pro 23 App',
       debugShowCheckedModeBanner: false,
 
+      theme: AppTheme.lightTheme,
+
+      // Translations
       translations: AppTranslation(),
-      locale: const Locale('km', 'US'),
+      locale: const Locale('km', 'KH'),
       fallbackLocale: const Locale('en', 'US'),
 
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
+      // Initial Binding
       initialBinding: BindingsBuilder(() {
         Get.put(PostController());
       }),
 
-      home: const MainScreen(),
+      home: const LoginScreen(),
+      getPages: [
+        GetPage(name: '/login', page: () => const LoginScreen()),
+        GetPage(name: '/main', page: () => const MainScreen()),
+      ],
     );
   }
 }

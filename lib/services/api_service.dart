@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 import '../model/post_model.dart';
 
 class ApiService {
   static const String baseUrl = 'https://flutter-api.janrent.com';
 
-  String? _authToken = 'eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlhdCI6MTc4ODY2ODU4MiwiZXhwIjoxNzg4NzU0OTgyfQ.UxYmCs7wIKwIlBkIHJY41xJuHBTrdP96msX4vfm0FLGxvJGpFsAEXU3HQqS4twtT';
+  String? _authToken = 'eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlhdCI6MTc4OTUzMTM5OSwiZXhwIjoxNzg5NjE3Nzk5fQ.69DlZa3Sk0fSvPtHuklQHXomrbV-mnmR-DRSrzkkxO30HgCwQju_bBvzU1xYSggK';
 
   void setAuthToken(String token) {
     _authToken = token;
@@ -37,13 +38,13 @@ class ApiService {
         final token = data['token'];
         if (token != null) {
           _authToken = token;
-          print(' Login successful, token saved');
+          debugPrint(' Login successful, token saved');
           return true;
         }
       }
       return false;
     } catch (e) {
-      print(' Login error: $e');
+      debugPrint(' Login error: $e');
       return false;
     }
   }
@@ -67,7 +68,7 @@ class ApiService {
         throw Exception('Failed to load posts: ${response.statusCode}');
       }
     } catch (e) {
-      print(' Error fetching posts: $e');
+      debugPrint(' Error fetching posts: $e');
       rethrow;
     }
   }
@@ -90,7 +91,7 @@ class ApiService {
         throw Exception('Failed to create post: ${response.body}');
       }
     } catch (e) {
-      print(' Error creating post: $e');
+      debugPrint(' Error creating post: $e');
       rethrow;
     }
   }
@@ -113,7 +114,7 @@ class ApiService {
         throw Exception('Failed to update post: ${response.body}');
       }
     } catch (e) {
-      print(' Error updating post: $e');
+      debugPrint(' Error updating post: $e');
       rethrow;
     }
   }
@@ -129,14 +130,14 @@ class ApiService {
         throw Exception('Failed to delete post: ${response.body}');
       }
     } catch (e) {
-      print(' Error deleting post: $e');
+      debugPrint(' Error deleting post: $e');
       rethrow;
     }
   }
 
   Future<PostModel> uploadPostImage(int postId, File imageFile) async {
     try {
-      print('📤 Uploading image to post ID: $postId');
+      debugPrint(' Uploading image to post ID: $postId');
 
       var request = http.MultipartRequest(
         'POST',
@@ -155,8 +156,8 @@ class ApiService {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('📥 Response status: ${streamedResponse.statusCode}');
-      print('📥 Response body: ${response.body}');
+      debugPrint(' Response status: ${streamedResponse.statusCode}');
+      debugPrint(' Response body: ${response.body}');
 
       if (streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201) {
         final jsonData = json.decode(response.body);
@@ -168,16 +169,15 @@ class ApiService {
         throw Exception('Failed to upload image: ${response.body}');
       }
     } catch (e) {
-      print(' Error uploading image: $e');
+      debugPrint(' Error uploading image: $e');
       rethrow;
     }
   }
 
-
   Future<PostModel> uploadPostImageFromBytes(int postId, Uint8List imageBytes) async {
     try {
-      print('📤 Uploading image from bytes to post ID: $postId');
-      print('📤 Image size: ${imageBytes.length} bytes');
+      debugPrint(' Uploading image from bytes to post ID: $postId');
+      debugPrint(' Image size: ${imageBytes.length} bytes');
 
       var request = http.MultipartRequest(
         'POST',
@@ -188,33 +188,32 @@ class ApiService {
         request.headers['Authorization'] = 'Bearer $_authToken';
       }
 
-
       request.files.add(http.MultipartFile.fromBytes(
         'file',
         imageBytes,
         filename: 'image.jpg',
       ));
 
-      print('📤 Sending request to server...');
+      debugPrint(' Sending request to server...');
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      print('📥 Response status: ${streamedResponse.statusCode}');
-      print('📥 Response body: ${response.body}');
+      debugPrint(' Response status: ${streamedResponse.statusCode}');
+      debugPrint(' Response body: ${response.body}');
 
       if (streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201) {
         final jsonData = json.decode(response.body);
-        print(' Upload successful!');
+        debugPrint(' Upload successful!');
         if (jsonData is Map && jsonData.containsKey('data')) {
           return PostModel.fromMap(jsonData['data']);
         }
         return PostModel.fromMap(jsonData);
       } else {
-        print(' Upload failed with status: ${streamedResponse.statusCode}');
+        debugPrint(' Upload failed with status: ${streamedResponse.statusCode}');
         throw Exception('Failed to upload image: ${response.body}');
       }
     } catch (e) {
-      print(' Error uploading image: $e');
+      debugPrint(' Error uploading image: $e');
       rethrow;
     }
   }

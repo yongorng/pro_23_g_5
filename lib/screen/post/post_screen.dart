@@ -1,294 +1,211 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../controller/post_controller.dart';
-import '../../model/post_model.dart';
-import 'create_post_screen.dart';
 
-class PostScreen extends StatelessWidget {
-  const PostScreen({Key? key}) : super(key: key);
+import '../../controller/post_controller.dart';
+import '../../theme/app_color.dart';
+import '../post/create_post_screen.dart';
+import 'widgets/post_menu_actions.dart';
+
+class PostScreen extends StatefulWidget {
+  const PostScreen({super.key});
+
+  @override
+  State<PostScreen> createState() => _PostScreenState();
+}
+
+class _PostScreenState extends State<PostScreen> {
+  final RxString _searchQuery = ''.obs;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+
+    _scrollController.addListener(() {
+      final controller = Get.find<PostController>();
+
+      if (_searchQuery.value.isEmpty &&
+          _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        controller.loadMorePosts();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+
+  Future<void> _onRefresh() async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    final controller = Get.find<PostController>();
+    await controller.fetchPosts();
+
+    // Reset search query when refreshing
+    _searchQuery.value = '';
+  }
 
   @override
   Widget build(BuildContext context) {
     final PostController controller = Get.find<PostController>();
-    final TextEditingController searchController = TextEditingController();
-    final RxString searchQuery = ''.obs;
 
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Text('Posts',
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: Text('Posts'.tr),
         centerTitle: true,
       ),
       body: Column(
         children: [
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: TextField(
-              controller: searchController,
-              onChanged: (value) => searchQuery.value = value,
-              decoration: InputDecoration(
-                hintText: 'Search by title',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  decoration: InputDecoration(
+                    hintText: 'ស្វែងរកតាមចំណងជើង'.tr,
+                    prefixIcon: const Icon(Icons.search, color: AppColor.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColor.primary),
+                    ),
+                    filled: true,
+                    fillColor: AppColor.surface,
+                  ),
+                  onChanged: (value) {
+                    _searchQuery.value = value;
+                  },
                 ),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-              ),
+                const SizedBox(height: 8),
+
+                Obx(() {
+                  final totalPosts = controller.allPosts.length;
+                  final filteredCount = controller.posts.where((post) {
+                    return post.title.toLowerCase().contains(_searchQuery.value.toLowerCase());
+                  }).length;
+
+                  final displayCount = _searchQuery.value.isEmpty
+                      ? controller.posts.length
+                      : filteredCount;
+
+                  return Text(
+                    'បង្ហាញ $displayCount ក្នុងចំណោម $totalPosts',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColor.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  );
+                }),
+              ],
             ),
           ),
 
-          // Posts count
-          Obx(() {
-            final filteredPosts = controller.getFilteredPosts(searchQuery.value);
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '${filteredPosts.length} of ${controller.posts.length} shown',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                ),
-              ),
-            );
-          }),
 
-          // Posts list
           Expanded(
-            child: Obx(() {
-              if (controller.isLoading.value) {
-                return const Center(child: CircularProgressIndicator());
-              }
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              color: AppColor.primary,
+              backgroundColor: Colors.white,
+              displacement: 100,
+              child: Obx(() {
+                if (controller.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-              final filteredPosts = controller.getFilteredPosts(searchQuery.value);
+                final filteredPosts = controller.posts.where((post) {
+                  return post.title.toLowerCase().contains(_searchQuery.value.toLowerCase());
+                }).toList();
 
-              if (filteredPosts.isEmpty) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text('No posts available'),
-                  ),
+                if (filteredPosts.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.article_outlined,
+                          size: 64,
+                          color: AppColor.textSecondary,
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          _searchQuery.value.isEmpty ? 'No posts found' : 'No matching posts',
+                          style: TextStyle(color: AppColor.textSecondary, fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  itemCount: filteredPosts.length + (controller.isLoadingMore.value ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == filteredPosts.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+
+                    final post = filteredPosts[index];
+                    String displayText = 'No description';
+                    if (post.description.isNotEmpty) {
+                      displayText = post.description.length > 50
+                          ? '${post.description.substring(0, 50)}...'
+                          : post.description;
+                    }
+
+                    return Card(
+                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: AppColor.primary,
+                          child: post.imageUrl != null && post.imageUrl!.isNotEmpty
+                              ? ClipOval(
+                            child: Image.network(
+                              post.imageUrl!,
+                              fit: BoxFit.cover,
+                              width: 40,
+                              height: 40,
+                              errorBuilder: (context, error, stackTrace) =>
+                              const Icon(Icons.article, color: AppColor.textOnPrimary),
+                            ),
+                          )
+                              : const Icon(Icons.article, color: AppColor.textOnPrimary),
+                        ),
+                        title: Text(
+                          post.title,
+                          style: const TextStyle(color: AppColor.textPrimary),
+                        ),
+                        subtitle: Text(
+                          displayText,
+                          style: const TextStyle(color: AppColor.textSecondary),
+                        ),
+                        trailing: PostMenuActions(post: post, controller: controller),
+                      ),
+                    );
+                  },
                 );
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: filteredPosts.length,
-                itemBuilder: (context, index) {
-                  final post = filteredPosts[index];
-                  return _buildPostCard(context, post, controller);
-                },
-              );
-            }),
+              }),
+            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
+        heroTag: 'post_new_post',
         onPressed: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const CreatePostScreen()),
           );
         },
-        backgroundColor: Colors.teal,
-        icon: const Icon(Icons.add),
-        label: const Text('New post'),
-      ),
-    );
-  }
-
-  Widget _buildPostCard(BuildContext context, PostModel post, PostController controller) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Post Image or Icon
-          post.imageUrl != null && post.imageUrl!.isNotEmpty
-              ? ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: SizedBox(
-              width: 60,
-              height: 60,
-              child: Image.network(
-                post.imageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildDefaultIcon(post.status == 'draft'),
-              ),
-            ),
-          )
-              : _buildDefaultIcon(post.status == 'draft'),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        post.title,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                    ),
-                    if (post.status == 'draft')
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.red.shade50,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Draft',
-                          style: TextStyle(color: Colors.red.shade700, fontSize: 12),
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  post.description,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${post.author ?? 'Unknown'} · ${post.date ?? ''}',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            onSelected: (value) {
-              if (value == 'edit') {
-                _showEditDialog(context, post, controller);
-              } else if (value == 'delete') {
-                _showDeleteConfirmation(context, post, controller);
-              } else if (value == 'unpublish') {
-                controller.togglePublishStatus(post);
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'edit',
-                child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 12), Text('Edit')]),
-              ),
-              const PopupMenuItem(
-                value: 'unpublish',
-                child: Row(children: [Icon(Icons.visibility_off, size: 20), SizedBox(width: 12), Text('Unpublish')]),
-              ),
-              const PopupMenuItem(
-                value: 'delete',
-                child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 12), Text('Delete', style: TextStyle(color: Colors.red))]),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDefaultIcon(bool isDraft) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        color: isDraft ? Colors.orange.shade100 : Colors.teal.shade100,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(
-        isDraft ? Icons.article_outlined : Icons.article,
-        color: isDraft ? Colors.orange : Colors.teal,
-        size: 30,
-      ),
-    );
-  }
-
-  // Edit Dialog
-  void _showEditDialog(BuildContext context, PostModel post, PostController controller) {
-    final titleController = TextEditingController(text: post.title);
-    final descController = TextEditingController(text: post.description);
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Edit Post'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(labelText: 'Title', border: OutlineInputBorder()),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: descController,
-              decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
-              maxLines: 3,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              if (titleController.text.isNotEmpty && post.id != null) {
-                controller.updatePost(post.copyWith(
-                  title: titleController.text,
-                  description: descController.text,
-                ));
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Delete Confirmation
-  void _showDeleteConfirmation(BuildContext context, PostModel post, PostController controller) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Post'),
-        content: Text('Are you sure you want to delete "${post.title}"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () {
-              if (post.id != null) {
-                controller.deletePost(post.id!);
-              }
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Delete'),
-          ),
-        ],
+        backgroundColor: AppColor.primary,
+        icon: const Icon(Icons.add, color: AppColor.textOnPrimary),
+        label: Text('New Post'.tr, style: const TextStyle(color: AppColor.textOnPrimary)),
       ),
     );
   }
