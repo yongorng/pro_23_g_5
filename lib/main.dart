@@ -10,7 +10,17 @@ import 'controller/post_controller.dart';
 import 'i10n/app_translation.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+
+import 'services/api_service.dart';
+
+
+void main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+
+
+  await ApiService().init();
+
   runApp(const MyApp());
 }
 

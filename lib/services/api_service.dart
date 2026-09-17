@@ -3,15 +3,38 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../model/post_model.dart';
 
 class ApiService {
   static const String baseUrl = 'https://flutter-api.janrent.com';
 
-  String? _authToken = 'eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbkBleGFtcGxlLmNvbSIsImlhdCI6MTc4OTUzMTM5OSwiZXhwIjoxNzg5NjE3Nzk5fQ.69DlZa3Sk0fSvPtHuklQHXomrbV-mnmR-DRSrzkkxO30HgCwQju_bBvzU1xYSggK';
 
-  void setAuthToken(String token) {
+  String? _authToken;
+
+
+  Future<void> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    _authToken = prefs.getString('auth_token');
+    if (_authToken != null) {
+      debugPrint(' Token ត្រូវបានផ្ទុកឡើងវិញពី Storage');
+    }
+  }
+
+
+  Future<void> setAuthToken(String token) async {
     _authToken = token;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('auth_token', token);
+    debugPrint(' Token ត្រូវបានរក្សាទុក');
+  }
+
+
+  Future<void> logout() async {
+    _authToken = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+    debugPrint('បានចាកចេញ (Token ត្រូវបានលុប)');
   }
 
   Map<String, String> _getHeaders() {
@@ -37,7 +60,7 @@ class ApiService {
         final data = json.decode(response.body);
         final token = data['token'];
         if (token != null) {
-          _authToken = token;
+          await setAuthToken(token);
           debugPrint(' Login successful, token saved');
           return true;
         }
@@ -58,7 +81,6 @@ class ApiService {
 
       if (response.statusCode == 200) {
         final jsonData = json.decode(response.body);
-
         if (jsonData is Map && jsonData.containsKey('data')) {
           final List<dynamic> dataList = jsonData['data'];
           return dataList.map((json) => PostModel.fromMap(json)).toList();
@@ -137,7 +159,7 @@ class ApiService {
 
   Future<PostModel> uploadPostImage(int postId, File imageFile) async {
     try {
-      debugPrint(' Uploading image to post ID: $postId');
+      debugPrint('📤 Uploading image to post ID: $postId');
 
       var request = http.MultipartRequest(
         'POST',
@@ -156,8 +178,7 @@ class ApiService {
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint(' Response status: ${streamedResponse.statusCode}');
-      debugPrint(' Response body: ${response.body}');
+      debugPrint('📥 Response status: ${streamedResponse.statusCode}');
 
       if (streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201) {
         final jsonData = json.decode(response.body);
@@ -176,8 +197,7 @@ class ApiService {
 
   Future<PostModel> uploadPostImageFromBytes(int postId, Uint8List imageBytes) async {
     try {
-      debugPrint(' Uploading image from bytes to post ID: $postId');
-      debugPrint(' Image size: ${imageBytes.length} bytes');
+      debugPrint('📤 Uploading image from bytes to post ID: $postId');
 
       var request = http.MultipartRequest(
         'POST',
@@ -194,22 +214,18 @@ class ApiService {
         filename: 'image.jpg',
       ));
 
-      debugPrint(' Sending request to server...');
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
 
-      debugPrint(' Response status: ${streamedResponse.statusCode}');
-      debugPrint(' Response body: ${response.body}');
+      debugPrint('📥 Response status: ${streamedResponse.statusCode}');
 
       if (streamedResponse.statusCode == 200 || streamedResponse.statusCode == 201) {
         final jsonData = json.decode(response.body);
-        debugPrint(' Upload successful!');
         if (jsonData is Map && jsonData.containsKey('data')) {
           return PostModel.fromMap(jsonData['data']);
         }
         return PostModel.fromMap(jsonData);
       } else {
-        debugPrint(' Upload failed with status: ${streamedResponse.statusCode}');
         throw Exception('Failed to upload image: ${response.body}');
       }
     } catch (e) {
