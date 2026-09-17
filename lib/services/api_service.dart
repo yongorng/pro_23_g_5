@@ -17,7 +17,7 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     _authToken = prefs.getString('auth_token');
     if (_authToken != null) {
-      debugPrint(' Token ត្រូវបានផ្ទុកឡើងវិញពី Storage');
+      debugPrint(' Token  Storage');
     }
   }
 
@@ -26,7 +26,7 @@ class ApiService {
     _authToken = token;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
-    debugPrint(' Token ត្រូវបានរក្សាទុក');
+    debugPrint(' Token ');
   }
 
 
