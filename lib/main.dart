@@ -1,28 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 
+import 'binding/dependency_injection_binding.dart';
 import 'screen/auth/login_screen.dart';
 import 'screen/auth/register_screen.dart';
 import 'screen/main_screen.dart';
 import 'i10n/app_translation.dart';
 import 'theme/app_theme.dart';
-import 'services/api_client.dart';
-import 'utils/token_storage.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final tokenStorage = await TokenStorage().init();
-
-  Get.put<TokenStorage>(
-    tokenStorage,
-    permanent: true,
-  );
-
-  Get.put<ApiClient>(
-    ApiClient(tokenStorage),
-    permanent: true,
-  );
+  await DependencyInjectionBinding.init();
 
   runApp(const MyApp());
 }
@@ -39,6 +29,15 @@ class MyApp extends StatelessWidget {
       translations: AppTranslation(),
       locale: const Locale('km', 'KH'),
       fallbackLocale: const Locale('en', 'US'),
+      localizationsDelegates: const <LocalizationsDelegate<dynamic>>[
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const <Locale>[
+        Locale('km', 'KH'),
+        Locale('en', 'US'),
+      ],
       home: const LoginScreen(),
       getPages: [
         GetPage(
