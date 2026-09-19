@@ -19,11 +19,6 @@ class PostController extends GetxController {
 
   final selectedImagePath = RxString('');
 
-  @override
-  void onInit() {
-    super.onInit();
-
-  }
 
   Future<void> fetchPosts() async {
     isLoading.value = true;
