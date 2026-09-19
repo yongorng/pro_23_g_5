@@ -106,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 10,
                               offset: const Offset(0, 5),
                             ),
@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   gradient: LinearGradient(
                                     begin: Alignment.topCenter,
                                     end: Alignment.bottomCenter,
-                                    colors: [Colors.transparent, Colors.black.withOpacity(0.9)],
+                                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.9)],
                                   ),
                                 ),
                               ),
@@ -137,7 +137,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     children: [
                                       Text(item['title']!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
                                       const SizedBox(height: 4),
-                                      Text(item['subtitle']!, style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.8))),
+                                      Text(item['subtitle']!, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
                                     ],
                                   ),
                                 ),
@@ -192,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return SliverList(delegate: SliverChildBuilderDelegate((context, index) {
                 final post = posts[index];
                 return Card(margin: const EdgeInsets.only(bottom: 12), child: ListTile(
-                  leading: CircleAvatar(backgroundColor: AppColor.primary, child: post.imageUrl != null && post.imageUrl!.isNotEmpty ? ClipOval(child: Image.network(post.imageUrl!, fit: BoxFit.cover, width: 40, height: 40, errorBuilder: (_, __, ___) => const Icon(Icons.article, color: AppColor.textOnPrimary))) : const Icon(Icons.article, color: AppColor.textOnPrimary)),
+                  leading: CircleAvatar(backgroundColor: AppColor.primary, child: post.imageUrl != null && post.imageUrl!.isNotEmpty ? ClipOval(child: Image.network(post.imageUrl!, fit: BoxFit.cover, width: 40, height: 40, errorBuilder: (_, _, ___) => const Icon(Icons.article, color: AppColor.textOnPrimary))) : const Icon(Icons.article, color: AppColor.textOnPrimary)),
                   title: Text(post.title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColor.textPrimary)),
                   subtitle: Text(post.description.isNotEmpty ? (post.description.length > 50 ? '${post.description.substring(0, 50)}...' : post.description) : 'No description', style: const TextStyle(color: AppColor.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
                   isThreeLine: true,
