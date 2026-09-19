@@ -3,9 +3,8 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:get/get.dart';
 
 import 'binding/dependency_injection_binding.dart';
-import 'screen/auth/login_screen.dart';
-import 'screen/auth/register_screen.dart';
-import 'screen/main_screen.dart';
+import 'route/app_page.dart';
+import 'route/app_route.dart';
 import 'i10n/app_translation.dart';
 import 'theme/app_theme.dart';
 
@@ -38,21 +37,9 @@ class MyApp extends StatelessWidget {
         Locale('km', 'KH'),
         Locale('en', 'US'),
       ],
-      home: const LoginScreen(),
-      getPages: [
-        GetPage(
-          name: '/login',
-          page: () => const LoginScreen(),
-        ),
-        GetPage(
-          name: '/register',
-          page: () => const RegisterScreen(),
-        ),
-        GetPage(
-          name: '/main',
-          page: () => const MainScreen(),
-        ),
-      ],
+      initialRoute: AppRoute.login,
+      getPages: AppPage.pages,
+      defaultTransition: Transition.cupertino,
     );
   }
 }
