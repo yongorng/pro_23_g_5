@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../theme/app_color.dart';
+import '../../route/app_route.dart';
+import '../../utils/token_storage.dart';
 
 class SettingScreen extends StatelessWidget {
   const SettingScreen({super.key});
@@ -101,7 +103,8 @@ class SettingScreen extends StatelessWidget {
           ElevatedButton(
             onPressed: () {
               Get.back();
-              Get.offAllNamed('/login');
+              Get.find<TokenStorage>().clear();
+              Get.offAllNamed(AppRoute.login);
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColor.error),
             child: const Text('ចាកចេញ'),
