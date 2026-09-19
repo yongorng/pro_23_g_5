@@ -1,191 +1,194 @@
-import 'dart:typed_data';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../repository/post_repository.dart';
-import '../model/post_model.dart';
-import '../theme/app_color.dart';
 
+import '../constant/app_constant.dart';
+import '../core/util/api_exception.dart';
+import '../data/model/response/page_response.dart';
+import '../data/model/post_model.dart';
+import '../data/model/response/sse_event.dart';
+import '../data/service/post_service.dart';
+import '../data/service/sse_service.dart';
+import '../route/app_route.dart';
+import '../util/ui_util.dart';
+
+/// The posts tab: paginated infinite scroll, search, and live updates.
+///
+/// Deliberately the same shape as [UserController] — once you have read one of
+/// these, the other holds no surprises.
 class PostController extends GetxController {
-  final PostRepository _repository = PostRepository();
+  final PostService _postService = Get.find<PostService>();
+  final SseService _sseService = Get.find<SseService>();
 
-  final RxBool isLoading = false.obs;
-  final RxBool isLoadingMore = false.obs;
+  final posts = <PostModel>[].obs;
+  final isLoading = false.obs;
+  final isLoadingMore = false.obs;
+  final errorMessage = ''.obs;
+  final searchTerm = ''.obs;
 
-  final RxList<PostModel> _allPosts = <PostModel>[].obs;
-  final RxList<PostModel> _visiblePosts = <PostModel>[].obs;
+  final ScrollController scrollController = ScrollController();
+  final TextEditingController searchC = TextEditingController();
 
-  final RxInt visibleCount = 10.obs;
-  final int loadIncrement = 1;
+  int _page = 0;
+  int _totalPages = 1;
+  int _total = 0;
 
-  final selectedImagePath = RxString('');
+  StreamSubscription<SseEvent>? _sseSub;
 
+  int get total => _total;
 
-  Future<void> fetchPosts() async {
+  bool get hasMore => _page + 1 < _totalPages;
+
+  @override
+  void onInit() {
+    super.onInit();
+    scrollController.addListener(_onScroll);
+    debounce<String>(
+      searchTerm,
+      (_) => refreshList(),
+      time: const Duration(milliseconds: 400),
+    );
+    _listenToSse();
+    loadFirstPage();
+  }
+
+  @override
+  void onClose() {
+    scrollController.removeListener(_onScroll);
+    scrollController.dispose();
+    searchC.dispose();
+    _sseSub?.cancel();
+    super.onClose();
+  }
+
+  Future<void> loadFirstPage() async {
     isLoading.value = true;
-    visibleCount.value = 10;
+    errorMessage.value = '';
+    _page = 0;
 
-    try {
-      final posts = await _repository.getPosts(size: 100);
-      _allPosts.clear();
-      _allPosts.addAll(posts);
+    final result = await _postService.getPage(
+      page: 0,
+      size: AppConstant.pageSize,
+      title: searchTerm.value.trim(),
+    );
+    isLoading.value = false;
 
-      _updateVisiblePosts();
-
-      debugPrint('✅ ទាញយកបានចំនួន: ${posts.length} posts');
-    } catch (e) {
-      debugPrint('❌ Error: $e');
-      Get.snackbar('Error', 'Failed to load posts',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
-    } finally {
-      isLoading.value = false;
-    }
+    result.fold(
+      (ApiException e) {
+        errorMessage.value = e.message;
+        posts.clear();
+      },
+      (PageResponse<PostModel> page) {
+        posts.assignAll(page.items);
+        _applyMeta(page);
+      },
+    );
   }
 
-  void _updateVisiblePosts() {
-    _visiblePosts.clear();
-    final count = visibleCount.value > _allPosts.length
-        ? _allPosts.length
-        : visibleCount.value;
-
-    for (int i = 0; i < count; i++) {
-      _visiblePosts.add(_allPosts[i]);
-    }
+  Future<void> refreshList() async {
+    _page = 0;
+    final result = await _postService.getPage(
+      page: 0,
+      size: AppConstant.pageSize,
+      title: searchTerm.value.trim(),
+    );
+    result.fold((ApiException e) => UiUtil.error(e.message), (
+      PageResponse<PostModel> page,
+    ) {
+      posts.assignAll(page.items);
+      _applyMeta(page);
+    });
   }
 
-  Future<void> loadMorePosts() async {
-    if (isLoadingMore.value) return;
+  Future<void> loadMore() async {
+    if (isLoadingMore.value || isLoading.value || !hasMore) return;
 
     isLoadingMore.value = true;
+    final result = await _postService.getPage(
+      page: _page + 1,
+      size: AppConstant.pageSize,
+      title: searchTerm.value.trim(),
+    );
+    isLoadingMore.value = false;
 
-    try {
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      if (visibleCount.value >= _allPosts.length) {
-        visibleCount.value = 10;
-        debugPrint('🔄 Looping back to start! Showing 10/${_allPosts.length}');
-
-        Get.snackbar('Info', 'Back to top',
-            snackPosition: SnackPosition.TOP,
-            duration: const Duration(seconds: 1),
-            backgroundColor: AppColor.primary,
-            colorText: Colors.white);
-      } else {
-        visibleCount.value += loadIncrement;
-        if (visibleCount.value > _allPosts.length) {
-          visibleCount.value = _allPosts.length;
-        }
-        debugPrint('📄 Loaded: ${visibleCount.value}/${_allPosts.length}');
-      }
-
-      _updateVisiblePosts();
-    } catch (e) {
-      debugPrint('❌ Error loading more: $e');
-    } finally {
-      isLoadingMore.value = false;
-    }
+    result.fold((ApiException e) => UiUtil.error(e.message), (
+      PageResponse<PostModel> page,
+    ) {
+      posts.addAll(page.items);
+      _applyMeta(page);
+    });
   }
 
-  // ✅ Getters
-  List<PostModel> get posts => _visiblePosts;
-  List<PostModel> get allPosts => _allPosts;
-
-  List<PostModel> get publishedPosts =>
-      _allPosts.where((post) => post.status == 'published').toList();
-
-  List<PostModel> getFilteredPosts(String query) {
-    if (query.isEmpty) return _allPosts;
-    return _allPosts
-        .where((post) => post.title.toLowerCase().contains(query.toLowerCase()))
-        .toList();
+  void _applyMeta(PageResponse<PostModel> page) {
+    _page = page.page;
+    _totalPages = page.totalPages;
+    _total = page.total;
   }
 
-  Future<PostModel> createPostDirect(PostModel post) async {
-    return await _repository.createPost(post);
+  void _onScroll() {
+    if (!scrollController.hasClients) return;
+    final double remaining =
+        scrollController.position.maxScrollExtent -
+        scrollController.position.pixels;
+    if (remaining <= AppConstant.loadMoreThreshold) loadMore();
   }
 
-  Future<void> addPost(PostModel post) async {
-    try {
-      final newPost = await _repository.createPost(post);
-      _allPosts.insert(0, newPost);
-      visibleCount.value++;
-      _updateVisiblePosts();
-      Get.snackbar('Success', 'Post created successfully',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to create post',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
-    }
+  void onSearchChanged(String value) => searchTerm.value = value;
+
+  void clearSearch() {
+    searchC.clear();
+    searchTerm.value = '';
   }
 
-  Future<void> updatePost(PostModel updatedPost) async {
-    try {
-      final post = await _repository.updatePost(updatedPost);
-      final index = _allPosts.indexWhere((p) => p.id == post.id);
-      if (index != -1) {
-        _allPosts[index] = post;
-        _updateVisiblePosts();
-      }
-      Get.snackbar('Success', 'Post updated successfully',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green,
-          colorText: Colors.white);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to update post',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
-    }
+  /// Only the author may delete — the backend answers 400 for anyone else, and
+  /// that message is what the snackbar shows.
+  Future<void> confirmDelete(PostModel post) async {
+    final bool ok = await UiUtil.confirm(
+      title: 'Delete post'.tr,
+      message: '@name will be removed from the list'.trParams(<String, String>{
+        'name': post.title,
+      }),
+      confirmText: 'Delete'.tr,
+      destructive: true,
+    );
+    if (!ok) return;
+
+    final result = await _postService.delete(post.id);
+    result.fold((ApiException e) => UiUtil.error(e.message), (_) {
+      posts.removeWhere((PostModel p) => p.id == post.id);
+      _total = _total > 0 ? _total - 1 : 0;
+      UiUtil.success(
+        '@name deleted'.trParams(<String, String>{'name': post.title}),
+      );
+    });
   }
 
-  Future<void> deletePost(int postId) async {
-    try {
-      await _repository.deletePost(postId);
-      _allPosts.removeWhere((p) => p.id == postId);
-      if (visibleCount.value > _allPosts.length) {
-        visibleCount.value = _allPosts.length;
-      }
-      _updateVisiblePosts();
-      Get.snackbar('Deleted', 'Post deleted successfully',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to delete post',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
-    }
+  void openCreate() => Get.toNamed(AppRoute.postForm);
+
+  void openEdit(PostModel post) =>
+      Get.toNamed(AppRoute.postForm, arguments: post);
+
+  /// Publish / unpublish without opening the form. Sends only `published`,
+  /// which the backend treats as a patch and leaves the text untouched.
+  Future<void> togglePublished(PostModel post) async {
+    final result = await _postService.update(
+      post.id,
+      published: !post.published,
+    );
+
+    result.fold((ApiException e) => UiUtil.error(e.message), (
+      PostModel updated,
+    ) {
+      final int i = posts.indexWhere((PostModel p) => p.id == updated.id);
+      if (i >= 0) posts[i] = updated;
+      UiUtil.success(updated.published ? 'Published'.tr : 'Kept as a draft'.tr);
+    });
   }
 
-  Future<void> togglePublishStatus(PostModel post) async {
-    final newStatus = post.status == 'published' ? 'draft' : 'published';
-    final updatedPost = post.copyWith(status: newStatus);
-    await updatePost(updatedPost);
+  void _listenToSse() {
+    _sseSub = _sseService.events.listen((SseEvent event) {
+      if (event.name == 'post-event') refreshList();
+    });
   }
-
-  void setSelectedImage(String? path) {
-    selectedImagePath.value = path ?? '';
-  }
-
-  Future<void> uploadPostImageFromBytes(int postId, Uint8List imageBytes) async {
-    try {
-      final updatedPost = await _repository.uploadImageFromBytes(postId, imageBytes);
-      final index = _allPosts.indexWhere((p) => p.id == postId);
-      if (index != -1) {
-        _allPosts[index] = updatedPost;
-        _updateVisiblePosts();
-      }
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to upload image: $e',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
-      rethrow;
-    }
-  }}
+}
