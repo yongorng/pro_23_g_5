@@ -1,268 +1,218 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../theme/app_color.dart';
-import '../../route/app_route.dart';
-import '../../utils/token_storage.dart';
 
-class SettingScreen extends StatelessWidget {
+import '../../controller/connection_controller.dart';
+import '../../controller/setting_controller.dart';
+import '../../core/value/app_color.dart';
+import '../../core/value/app_dimen.dart';
+import '../../core/value/app_text_style.dart';
+import '../../data/model/user_model.dart';
+import '../../widget/app_button.dart';
+import '../../widget/user_avatar.dart';
+
+/// Settings tab — account, language, connection, and sign-out.
+class SettingScreen extends GetView<SettingController> {
   const SettingScreen({super.key});
-
-  void _showLanguageDialog(BuildContext context) {
-    Get.dialog(
-      AlertDialog(
-        title: Text('select_language'.tr),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('ភាសាខ្មែរ'),
-              trailing: (Get.locale?.languageCode == 'km')
-                  ? const Icon(Icons.check, color: AppColor.primary)
-                  : null,
-              onTap: () {
-                Get.updateLocale(const Locale('km', 'KH'));
-                Get.back();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.language),
-              title: const Text('English'),
-              trailing: (Get.locale?.languageCode == 'en')
-                  ? const Icon(Icons.check, color: AppColor.primary)
-                  : null,
-              onTap: () {
-                Get.updateLocale(const Locale('en', 'US'));
-                Get.back();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showEditProfileDialog(BuildContext context) {
-    final nameController = TextEditingController(text: 'Admin');
-    final emailController = TextEditingController(text: 'admin@example.com');
-
-    Get.dialog(
-      AlertDialog(
-        title: const Text('កែសម្រួលព័ត៌មាន'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'ឈ្មោះ',
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(
-                labelText: 'អ៊ីមែល',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('បោះបង់'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              Get.snackbar('Success', 'Information updated',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: AppColor.success,
-                  colorText: Colors.white);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColor.primary),
-            child: const Text('រក្សាទុក'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showLogoutDialog(BuildContext context) {
-    Get.dialog(
-      AlertDialog(
-        title: const Text('ចាកចេញ'),
-        content: const Text('តើអ្នកប្រាកដជាចង់ចាកចេញមែនទេ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('បោះបង់'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Get.back();
-              Get.find<TokenStorage>().clear();
-              Get.offAllNamed(AppRoute.login);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColor.error),
-            child: const Text('ចាកចេញ'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'ការកំណត់'.tr,
-          style: const TextStyle(color: AppColor.textPrimary, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Profile Header
-            Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColor.primary,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: AppColor.surface,
-                    child: const Text(
-                      'AD',
-                      style: TextStyle(
-                        color: AppColor.primary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Admin',
-                          style: TextStyle(
-                            color: AppColor.textOnPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'admin@example.com',
-                          style: TextStyle(
-                            color: AppColor.textOnPrimary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+      appBar: AppBar(title: Text('Settings'.tr)),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: AppDimen.spaceXl),
+        children: <Widget>[
+          const _AccountCard(),
+
+          _SectionTitle('Your account'.tr),
+          ListTile(
+            leading: const Icon(
+              Icons.edit_outlined,
+              color: AppColor.textSecondary,
             ),
-
-            // Account Section
-            _buildSectionTitle('គណនីរបស់អ្នក'),
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: ListTile(
-                leading: const Icon(Icons.edit, color: AppColor.primary),
-                title: const Text('កែសម្រួលព័ត៌មាន'),
-                subtitle: const Text('មើលផ្លាស់ប្ដូរឈ្មោះ និងរូបភាព'),
-                trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                onTap: () => _showEditProfileDialog(context),
-              ),
+            title: Text('Edit profile'.tr, style: AppTextStyle.body),
+            subtitle: Text(
+              'Update your name and photo'.tr,
+              style: AppTextStyle.caption,
             ),
-
-            const SizedBox(height: 16),
-
-            // General Section
-            _buildSectionTitle('ទូទៅ'),
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: ListTile(
-                leading: const Icon(Icons.language, color: AppColor.primary),
-                title: const Text('ភាសា'),
-                subtitle: const Text('ប្តូរភាសាកម្មវិធី'),
-                trailing: Text(
-                  Get.locale?.languageCode == 'km' ? 'ខ្មែរ' : 'English',
-                  style: const TextStyle(color: AppColor.primary, fontWeight: FontWeight.w600),
-                ),
-                onTap: () => _showLanguageDialog(context),
-              ),
+            trailing: const Icon(
+              Icons.chevron_right,
+              color: AppColor.textDisabled,
             ),
-            Card(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              child: ListTile(
-                leading: const Icon(Icons.wifi, color: AppColor.primary),
-                title: const Text('ការតភ្ចាប់'),
-                trailing: const Text(
-                  'Online',
-                  style: TextStyle(color: AppColor.success, fontWeight: FontWeight.w600),
-                ),
-                onTap: () {},
+            onTap: controller.editProfile,
+          ),
+
+          _SectionTitle('Preferences'.tr),
+          Obx(
+            () => ListTile(
+              leading: const Icon(
+                Icons.translate,
+                color: AppColor.textSecondary,
               ),
-            ),
-
-            const SizedBox(height: 32),
-
-            // Logout Button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton.icon(
-                  onPressed: () => _showLogoutDialog(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColor.error,
-                    foregroundColor: AppColor.textOnPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  icon: const Icon(Icons.logout),
-                  label: const Text(
-                    'ចាកចេញ',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
+              title: Text('Language'.tr, style: AppTextStyle.body),
+              subtitle: Text(
+                'Switch between Khmer and English'.tr,
+                style: AppTextStyle.caption,
+              ),
+              trailing: Text(
+                controller.isKhmer.value ? 'ខ្មែរ' : 'English',
+                style: AppTextStyle.caption.copyWith(
+                  color: AppColor.primary,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
+              onTap: controller.toggleLanguage,
             ),
+          ),
+          const _ConnectionRow(),
 
-            const SizedBox(height: 32),
-          ],
-        ),
+          _SectionTitle('About'.tr),
+          ListTile(
+            leading: const Icon(
+              Icons.info_outline,
+              color: AppColor.textSecondary,
+            ),
+            title: Text('Version'.tr, style: AppTextStyle.body),
+            trailing: const Text('1.0.0', style: AppTextStyle.caption),
+          ),
+
+          const SizedBox(height: AppDimen.spaceXl),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppDimen.spaceMd),
+            child: AppButton(
+              label: 'Logout'.tr,
+              icon: Icons.logout,
+              color: AppColor.danger,
+              onPressed: controller.logout,
+            ),
+          ),
+        ],
       ),
     );
   }
+}
 
-  Widget _buildSectionTitle(String title) {
+/// Teal card showing the signed-in account.
+///
+/// Reads the full user from [SettingController.currentUser] once `/me` has
+/// answered, and falls back to the username carried in the token until then —
+/// so the card is never empty, even offline.
+class _AccountCard extends StatelessWidget {
+  const _AccountCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final SettingController controller = Get.find<SettingController>();
+
+    return Obx(() {
+      final UserModel? user = controller.currentUser.value;
+      final String username = user?.username ?? controller.username;
+
+      return Container(
+        margin: const EdgeInsets.all(AppDimen.spaceMd),
+        padding: const EdgeInsets.all(AppDimen.spaceLg),
+        decoration: BoxDecoration(
+          color: AppColor.primary,
+          borderRadius: BorderRadius.circular(AppDimen.radiusLg),
+        ),
+        child: Row(
+          children: <Widget>[
+            if (user != null)
+              UserAvatar(user: user, size: 56)
+            else
+              const CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.white,
+                child: Icon(Icons.person, color: AppColor.primary),
+              ),
+            const SizedBox(width: AppDimen.spaceMd),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Signed in as'.tr,
+                    style: AppTextStyle.caption.copyWith(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    user?.displayName ?? (username.isEmpty ? '—' : username),
+                    style: AppTextStyle.body.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (user != null)
+                    Text(
+                      username,
+                      style: AppTextStyle.caption.copyWith(
+                        color: Colors.white70,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+}
+
+/// Live online/offline row, fed by the permanent [ConnectionController].
+class _ConnectionRow extends StatelessWidget {
+  const _ConnectionRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final ConnectionController connection = Get.find<ConnectionController>();
+
+    return Obx(() {
+      final bool online = connection.isConnected.value;
+      final int type = connection.connectionType.value;
+
+      return ListTile(
+        leading: Icon(
+          online
+              ? (type == 2 ? Icons.signal_cellular_alt : Icons.wifi)
+              : Icons.wifi_off,
+          color: online ? AppColor.success : AppColor.danger,
+        ),
+        title: Text('Connection'.tr, style: AppTextStyle.body),
+        trailing: Text(
+          online ? 'Online'.tr : 'Offline'.tr,
+          style: AppTextStyle.caption.copyWith(
+            color: online ? AppColor.success : AppColor.danger,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      );
+    });
+  }
+}
+
+/// Small grey heading between groups of rows.
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.fromLTRB(
+        AppDimen.spaceMd,
+        AppDimen.spaceLg,
+        AppDimen.spaceMd,
+        AppDimen.spaceSm,
+      ),
       child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w600,
-          color: AppColor.textSecondary,
+        text.toUpperCase(),
+        style: AppTextStyle.caption.copyWith(
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1,
+          color: AppColor.textDisabled,
         ),
       ),
     );

@@ -1,192 +1,109 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../services/api_client.dart';
-import '../../utils/token_storage.dart';
-import '../../theme/app_color.dart';
-import '../../route/app_route.dart';
+import '../../controller/auth_controller.dart';
+import '../../core/value/app_color.dart';
+import '../../core/value/app_dimen.dart';
+import '../../core/value/app_text_style.dart';
+import '../../util/validator.dart';
+import '../../widget/app_button.dart';
+import '../../widget/app_text_field.dart';
 
-class LoginScreen extends StatefulWidget {
+/// Sign-in screen.
+///
+/// Extends `GetView<AuthController>`, which gives a ready-made `controller`
+/// getter — no `Get.find` call and no `StatefulWidget` needed, because all the
+/// state lives in the controller.
+class LoginScreen extends GetView<AuthController> {
   const LoginScreen({super.key});
-
-  @override
-  State<LoginScreen> createState() => _LoginScreenState();
-}
-
-class _LoginScreenState extends State<LoginScreen> {
-  final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
-
-  bool _loading = false;
-  bool _obscure = true;
-
-  Future<void> _login() async {
-    final username = _usernameController.text.trim();
-    final password = _passwordController.text;
-
-    if (username.isEmpty || password.isEmpty) {
-      _showError('Please enter your username and password.');
-      return;
-    }
-
-    setState(() => _loading = true);
-
-    try {
-      final api = Get.find<ApiClient>();
-      final storage = Get.find<TokenStorage>();
-
-      final response = await api.post(
-        '/api/auth/login',
-        body: {
-          'username': username,
-          'password': password,
-        },
-      );
-
-      final accessToken = api.extractAccessToken(response);
-      final refreshToken = api.extractRefreshToken(response);
-
-      await storage.save(
-        accessToken: accessToken,
-        refreshToken: refreshToken,
-      );
-
-      if (!storage.hasToken) {
-        throw Exception('Unable to save authentication token.');
-      }
-
-      Get.offAllNamed(AppRoute.main);
-    } catch (e) {
-      final message = e.toString().replaceFirst('Exception: ', '');
-      _showError(message);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  void _showError(String message) {
-    Get.snackbar(
-      'Login failed',
-      message,
-      snackPosition: SnackPosition.BOTTOM,
-      backgroundColor: AppColor.error,
-      colorText: Colors.white,
-      duration: const Duration(seconds: 4),
-    );
-  }
-
-  @override
-  void dispose() {
-    _usernameController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColor.surface,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
+            padding: const EdgeInsets.all(AppDimen.spaceLg),
+            child: Form(
+              key: controller.formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text(
-                    'Welcome Back!',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: AppColor.primary,
-                    ),
+                children: <Widget>[
+                  const SizedBox(height: AppDimen.spaceXl),
+                  const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 56,
+                    color: AppColor.primary,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppDimen.spaceMd),
                   Text(
-                    'Sign in to continue',
+                    'Welcome back'.tr,
+                    style: AppTextStyle.title,
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColor.textSecondary),
                   ),
-                  const SizedBox(height: 40),
-                  TextField(
-                    controller: _usernameController,
-                    enabled: !_loading,
+                  const SizedBox(height: AppDimen.spaceXs),
+                  Text(
+                    'Sign in to your account'.tr,
+                    style: AppTextStyle.caption,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppDimen.spaceXl),
+
+                  AppTextField(
+                    label: 'Username'.tr,
+                    hint: 'admin@example.com',
+                    controller: controller.usernameC,
+                    keyboardType: TextInputType.emailAddress,
+                    prefixIcon: Icons.mail_outline,
                     textInputAction: TextInputAction.next,
-                    decoration: InputDecoration(
-                      labelText: 'Username',
-                      prefixIcon: const Icon(
-                        Icons.person_outline,
-                        color: AppColor.primary,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
+                    // Login only checks presence: the server decides whether
+                    // the value is correct, and the strength rules would lock
+                    // out accounts created before they existed.
+                    validator: (String? v) =>
+                        Validator.required(v, fieldKey: 'Username'),
                   ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _passwordController,
-                    enabled: !_loading,
-                    obscureText: _obscure,
-                    onSubmitted: (_) => _login(),
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: const Icon(
-                        Icons.lock_outline,
-                        color: AppColor.primary,
-                      ),
-                      suffixIcon: IconButton(
-                        onPressed: () => setState(() => _obscure = !_obscure),
+                  const SizedBox(height: AppDimen.spaceMd),
+
+                  Obx(
+                    () => AppTextField(
+                      label: 'Password'.tr,
+                      hint: '••••••••',
+                      controller: controller.passwordC,
+                      obscureText: controller.obscurePassword.value,
+                      prefixIcon: Icons.lock_outline,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => controller.login(),
+                      validator: (String? v) =>
+                          Validator.required(v, fieldKey: 'Password'),
+                      suffix: IconButton(
                         icon: Icon(
-                          _obscure ? Icons.visibility_off : Icons.visibility,
+                          controller.obscurePassword.value
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: AppDimen.iconMd,
+                          color: AppColor.textSecondary,
                         ),
+                        onPressed: controller.toggleObscure,
                       ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 28),
-                  SizedBox(
-                    height: 52,
-                    child: ElevatedButton(
-                      onPressed: _loading ? null : _login,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColor.primary,
-                        foregroundColor: AppColor.textOnPrimary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: _loading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                color: Colors.white,
-                                strokeWidth: 2.5,
-                              ),
-                            )
-                          : const Text(
-                              'Login',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                  const SizedBox(height: AppDimen.spaceLg),
+
+                  // Only this button rebuilds while the request runs — the
+                  // rest of the form is untouched.
+                  Obx(
+                    () => AppButton(
+                      label: 'Login'.tr,
+                      icon: Icons.login,
+                      isLoading: controller.isLoading.value,
+                      onPressed: controller.login,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: AppDimen.spaceMd),
+
                   TextButton(
-                    onPressed: _loading ? null : () => Get.toNamed(AppRoute.register),
-                    child: const Text("Don't have an account? Register"),
+                    onPressed: controller.goToRegister,
+                    child: Text("Don't have an account?".tr),
                   ),
                 ],
               ),
