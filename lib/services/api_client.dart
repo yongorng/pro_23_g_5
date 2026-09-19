@@ -27,7 +27,10 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
-          if (options.path != '/auth/login') {
+          final isPublicAuth = options.path == '/api/auth/login' ||
+              options.path == '/api/auth/register';
+
+          if (!isPublicAuth) {
             final token = _tokenStorage.token;
             if (token != null) {
               options.headers['Authorization'] = 'Bearer $token';
