@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../services/api_client.dart';
 import '../../utils/token_storage.dart';
 import '../../theme/app_color.dart';
@@ -12,88 +13,70 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  bool _isLoading = false;
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  bool _loading = false;
+  bool _obscure = true;
 
   Future<void> _login() async {
-    if (_emailController.text.trim().isEmpty ||
-        _passwordController.text.isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Please enter your username and password',
-        backgroundColor: AppColor.error,
-        colorText: Colors.white,
-      );
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    if (username.isEmpty || password.isEmpty) {
+      _showError('Please enter your username and password.');
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    final api = Get.find<ApiClient>();
-    final storage = Get.find<TokenStorage>();
+    setState(() => _loading = true);
 
     try {
-      final response = await api.post('/auth/login', body: {
-        'username': _emailController.text.trim(),
-        'password': _passwordController.text,
-      });
+      final api = Get.find<ApiClient>();
+      final storage = Get.find<TokenStorage>();
 
-      final dynamic data = response['data'] is Map
-          ? response['data']
-          : response;
-
-      final dynamic rawToken = data['token'] ??
-          data['access_token'] ??
-          data['accessToken'];
-
-      final String? token = rawToken is String
-          ? rawToken.trim()
-          : rawToken?.toString();
-
-      if (token != null && token.isNotEmpty) {
-        await storage.save(token);
-
-        if (!storage.hasToken) {
-          throw Exception('Unable to save authentication token');
-        }
-
-        Get.snackbar(
-          'Success',
-          'Login successful!',
-          backgroundColor: AppColor.primary,
-          colorText: AppColor.textOnPrimary,
-        );
-        Get.offAllNamed('/main');
-      } else {
-        Get.snackbar(
-          'Error',
-          'Login succeeded but no authentication token was returned',
-          backgroundColor: AppColor.error,
-          colorText: Colors.white,
-        );
-      }
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        e.toString(),
-        backgroundColor: AppColor.error,
-        colorText: Colors.white,
+      final response = await api.post(
+        '/auth/login',
+        body: {
+          'username': username,
+          'password': password,
+        },
       );
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+
+      final accessToken = api.extractAccessToken(response);
+      final refreshToken = api.extractRefreshToken(response);
+
+      await storage.save(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+      );
+
+      if (!storage.hasToken) {
+        throw Exception('Unable to save authentication token.');
       }
+
+      Get.offAllNamed('/main');
+    } catch (e) {
+      final message = e.toString().replaceFirst('Exception: ', '');
+      _showError(message);
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _showError(String message) {
+    Get.snackbar(
+      'Login failed',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColor.error,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 4),
+    );
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -105,144 +88,102 @@ class _LoginScreenState extends State<LoginScreen> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Welcome Back!',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: AppColor.primary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Sign in to continue',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppColor.textSecondary,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 48),
-                TextField(
-                  controller: _emailController,
-                  style: const TextStyle(color: AppColor.textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'Email / Username',
-                    labelStyle: TextStyle(color: AppColor.textSecondary),
-                    hintText: 'Enter your username',
-                    hintStyle: TextStyle(
-                      color: AppColor.textSecondary.withOpacity(0.5),
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.person_outline,
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Welcome Back!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
                       color: AppColor.primary,
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColor.primary),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColor.primary.withOpacity(0.5),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sign in to continue',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColor.textSecondary),
+                  ),
+                  const SizedBox(height: 40),
+                  TextField(
+                    controller: _usernameController,
+                    enabled: !_loading,
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(
+                      labelText: 'Username',
+                      prefixIcon: const Icon(
+                        Icons.person_outline,
                         color: AppColor.primary,
-                        width: 2,
                       ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
                     ),
-                    filled: true,
-                    fillColor: Colors.white,
                   ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _passwordController,
-                  obscureText: true,
-                  style: const TextStyle(color: AppColor.textPrimary),
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    labelStyle: TextStyle(color: AppColor.textSecondary),
-                    hintText: 'Enter your password',
-                    hintStyle: TextStyle(
-                      color: AppColor.textSecondary.withOpacity(0.5),
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.lock_outline,
-                      color: AppColor.primary,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: AppColor.primary),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(
-                        color: AppColor.primary.withOpacity(0.5),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _passwordController,
+                    enabled: !_loading,
+                    obscureText: _obscure,
+                    onSubmitted: (_) => _login(),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: const Icon(
+                        Icons.lock_outline,
                         color: AppColor.primary,
-                        width: 2,
                       ),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: _isLoading ? null : _login,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    backgroundColor: AppColor.primary,
-                    disabledBackgroundColor:
-                        AppColor.primary.withOpacity(0.5),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        )
-                      : const Text(
-                          'Login',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: AppColor.textOnPrimary,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.2,
-                          ),
+                      suffixIcon: IconButton(
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                        icon: Icon(
+                          _obscure ? Icons.visibility_off : Icons.visibility,
                         ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Pro 23 App',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppColor.textSecondary.withOpacity(0.7),
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColor.primary,
+                        foregroundColor: AppColor.textOnPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
