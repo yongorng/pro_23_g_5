@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../controller/main_controller.dart';
-import '../controller/post_controller.dart';
 import 'home/home_screen.dart';
 import 'post/post_screen.dart';
 import 'user/user_screen.dart';
@@ -15,11 +14,7 @@ class MainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final mainController = Get.put(MainController());
-
-    if (!Get.isRegistered<PostController>()) {
-      Get.put(PostController());
-    }
+    final mainController = Get.find<MainController>();
 
     return Scaffold(
       drawer: const CustomDrawer(),
