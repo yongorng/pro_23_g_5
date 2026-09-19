@@ -1,4 +1,6 @@
 import 'dart:typed_data';
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -33,24 +35,20 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       imageQuality: 85,
     );
 
-    if (image != null) {
-      if (kIsWeb) {
-        final bytes = await image.readAsBytes();
-        _imageBytes.value = bytes;
-        _imagePath.value = image.path;
-        debugPrint('🌐 Web Image selected');
-      } else {
-        _imageBytes.value = await image.readAsBytes();
-        _imagePath.value = image.path;
-        debugPrint('📱 Mobile Image selected: ${image.path}');
-      }
-    }
+    if (image == null) return;
+
+    _imageBytes.value = await image.readAsBytes();
+    _imagePath.value = image.path;
+    debugPrint(kIsWeb ? '🌐 Web image selected' : '📱 Mobile image selected');
   }
 
   Future<void> _takePhoto() async {
     if (kIsWeb) {
-      Get.snackbar('Notice', 'Camera is not supported on Web',
-          backgroundColor: AppColor.warning);
+      Get.snackbar(
+        'Notice',
+        'Camera is not supported on Web',
+        backgroundColor: AppColor.warning,
+      );
       return;
     }
 
@@ -61,18 +59,22 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
       imageQuality: 85,
     );
 
-    if (image != null) {
-      _imagePath.value = image.path;
-      debugPrint('📷 Photo taken: ${image.path}');
-    }
+    if (image == null) return;
+
+    _imageBytes.value = await image.readAsBytes();
+    _imagePath.value = image.path;
+    debugPrint('📷 Photo taken');
   }
 
   Future<void> _createPost() async {
-    if (_titleController.text.isEmpty) {
-      Get.snackbar('Error', 'Please enter a title',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.error,
-          colorText: AppColor.textOnPrimary);
+    if (_titleController.text.trim().isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Please enter a title',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColor.error,
+        colorText: AppColor.textOnPrimary,
+      );
       return;
     }
 
@@ -80,42 +82,42 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
 
     try {
       final newPost = PostModel(
-        title: _titleController.text,
+        title: _titleController.text.trim(),
         description: _descController.text,
         status: _isPublished.value ? 'published' : 'draft',
         date: DateTime.now().toString(),
       );
 
-      // 1. Create Post
       final createdPost = await controller.createPostDirect(newPost);
       debugPrint('✅ Post created with ID: ${createdPost.id}');
 
-      // ✅ ២. Upload Image (កែត្រឹមត្រូវសម្រាប់ទាំង Web និង Mobile)
-      if (createdPost.id != null) {
-        if (kIsWeb && _imageBytes.value != null) {
-          // សម្រាប់ Web: ប្រើ Bytes
-          await controller.uploadPostImageFromBytes(createdPost.id!, _imageBytes.value!);
-          debugPrint('✅ Image uploaded successfully (Web)');
-        } else if (_imageBytes.value != null) {
-          await controller.uploadPostImageFromBytes(createdPost.id!, _imageBytes.value!);
-          debugPrint('✅ Image uploaded successfully');
-        }
+      if (createdPost.id != null && _imageBytes.value != null) {
+        await controller.uploadPostImageFromBytes(
+          createdPost.id!,
+          _imageBytes.value!,
+        );
+        debugPrint('✅ Image uploaded successfully');
       }
 
-      // 3. Refresh list immediately to update UI
       await controller.fetchPosts();
 
-      Get.snackbar('Success', 'Post created successfully',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.success,
-          colorText: AppColor.textOnPrimary);
+      Get.snackbar(
+        'Success',
+        'Post created successfully',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColor.success,
+        colorText: AppColor.textOnPrimary,
+      );
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to create post: $e',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.error,
-          colorText: AppColor.textOnPrimary);
+      Get.snackbar(
+        'Error',
+        'Failed to create post: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColor.error,
+        colorText: AppColor.textOnPrimary,
+      );
     } finally {
       _isUploading.value = false;
     }
@@ -134,7 +136,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         ),
         title: const Text(
           'Create Post',
-          style: TextStyle(color: AppColor.textOnPrimary, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: AppColor.textOnPrimary,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         centerTitle: true,
       ),
@@ -143,52 +148,65 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Obx(() => GestureDetector(
-              onTap: () => _showImageSourceDialog(),
-              child: Container(
-                width: double.infinity,
-                height: 200,
-                decoration: BoxDecoration(
-                  color: AppColor.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColor.primary.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: _imagePath.value.isNotEmpty || (kIsWeb && _imageBytes.value != null)
-                    ? ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: kIsWeb && _imageBytes.value != null
-                      ? Image.memory(_imageBytes.value!, fit: BoxFit.cover)
-                      : (!kIsWeb && _imagePath.value.isNotEmpty)
-                      ? Image.file(File(_imagePath.value), fit: BoxFit.cover)
-                      : const SizedBox(), // Fallback
-                )
-                    : const Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add_photo_alternate_outlined,
-                        size: 50, color: AppColor.primary),
-                    SizedBox(height: 8),
-                    Text(
-                      'Tap to select an image',
-                      style: TextStyle(color: AppColor.textSecondary),
+            Obx(
+              () => GestureDetector(
+                onTap: _showImageSourceDialog,
+                child: Container(
+                  width: double.infinity,
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: AppColor.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColor.primary.withValues(alpha: 0.3),
                     ),
-                  ],
+                  ),
+                  child: _imageBytes.value != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: Image.memory(
+                            _imageBytes.value!,
+                            fit: BoxFit.cover,
+                          ),
+                        )
+                      : const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.add_photo_alternate_outlined,
+                              size: 50,
+                              color: AppColor.primary,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Tap to select an image',
+                              style: TextStyle(
+                                color: AppColor.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
                 ),
               ),
-            )),
-
+            ),
             const SizedBox(height: 24),
-
-            const Text('Title',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColor.textPrimary)),
+            const Text(
+              'Title',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColor.textPrimary,
+              ),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _titleController,
               decoration: InputDecoration(
                 hintText: 'My awesome post',
-                prefixIcon: const Icon(Icons.title, color: AppColor.primary),
+                prefixIcon: const Icon(
+                  Icons.title,
+                  color: AppColor.primary,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(color: AppColor.primary),
@@ -197,11 +215,15 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 fillColor: AppColor.surface,
               ),
             ),
-
             const SizedBox(height: 16),
-
-            const Text('Content',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColor.textPrimary)),
+            const Text(
+              'Content',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: AppColor.textPrimary,
+              ),
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: _descController,
@@ -216,70 +238,93 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
                 fillColor: AppColor.surface,
               ),
             ),
-
             const SizedBox(height: 24),
-
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
+                const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Published',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColor.textPrimary)),
-                    Text('Visible to everyone',
-                        style: TextStyle(color: AppColor.textSecondary, fontSize: 12)),
-                  ],
-                ),
-                Obx(() => Switch(
-                  value: _isPublished.value,
-                  onChanged: (value) => _isPublished.value = value,
-                  activeThumbColor: AppColor.primary,
-                )),
-              ],
-            ),
-
-            const SizedBox(height: 32),
-
-            Obx(() => SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _isUploading.value ? null : _createPost,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColor.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: _isUploading.value
-                    ? const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColor.textOnPrimary,
+                    Text(
+                      'Published',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColor.textPrimary,
                       ),
                     ),
-                    SizedBox(width: 12),
-                    Text('Creating...',
-                        style: TextStyle(color: AppColor.textOnPrimary)),
-                  ],
-                )
-                    : const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check, color: AppColor.textOnPrimary),
-                    SizedBox(width: 8),
-                    Text('Create Post',
-                        style: TextStyle(color: AppColor.textOnPrimary, fontSize: 16)),
+                    Text(
+                      'Visible to everyone',
+                      style: TextStyle(
+                        color: AppColor.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
+                Obx(
+                  () => Switch(
+                    value: _isPublished.value,
+                    onChanged: (value) => _isPublished.value = value,
+                    activeThumbColor: AppColor.primary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 32),
+            Obx(
+              () => SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _isUploading.value ? null : _createPost,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColor.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isUploading.value
+                      ? const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColor.textOnPrimary,
+                              ),
+                            ),
+                            SizedBox(width: 12),
+                            Text(
+                              'Creating...',
+                              style: TextStyle(
+                                color: AppColor.textOnPrimary,
+                              ),
+                            ),
+                          ],
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.check,
+                              color: AppColor.textOnPrimary,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Create Post',
+                              style: TextStyle(
+                                color: AppColor.textOnPrimary,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                ),
               ),
-            )),
+            ),
           ],
         ),
       ),
@@ -293,7 +338,10 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         child: Wrap(
           children: [
             ListTile(
-              leading: const Icon(Icons.photo_library, color: AppColor.primary),
+              leading: const Icon(
+                Icons.photo_library,
+                color: AppColor.primary,
+              ),
               title: const Text('Select from Gallery'),
               onTap: () {
                 Navigator.pop(context);
@@ -302,18 +350,26 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
             ),
             if (!kIsWeb)
               ListTile(
-                leading: const Icon(Icons.camera_alt, color: AppColor.primary),
+                leading: const Icon(
+                  Icons.camera_alt,
+                  color: AppColor.primary,
+                ),
                 title: const Text('Take a Photo'),
                 onTap: () {
                   Navigator.pop(context);
                   _takePhoto();
                 },
               ),
-            if (_imagePath.value.isNotEmpty || (kIsWeb && _imageBytes.value != null))
+            if (_imageBytes.value != null)
               ListTile(
-                leading: const Icon(Icons.delete, color: AppColor.error),
-                title: const Text('Remove Image',
-                    style: TextStyle(color: AppColor.error)),
+                leading: const Icon(
+                  Icons.delete,
+                  color: AppColor.error,
+                ),
+                title: const Text(
+                  'Remove Image',
+                  style: TextStyle(color: AppColor.error),
+                ),
                 onTap: () {
                   _imagePath.value = '';
                   _imageBytes.value = null;
