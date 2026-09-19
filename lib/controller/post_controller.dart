@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -195,21 +194,5 @@ class PostController extends GetxController {
       rethrow;
     }
   }
-
-  Future<void> uploadPostImage(int postId, File imageFile) async {
-    try {
-      final updatedPost = await _repository.uploadImage(postId, imageFile);
-      final index = _allPosts.indexWhere((p) => p.id == postId);
-      if (index != -1) {
-        _allPosts[index] = updatedPost;
-        _updateVisiblePosts();
-      }
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to upload image: $e',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.red,
-          colorText: Colors.white);
-      rethrow;
-    }
-  }
+undefined
 }
