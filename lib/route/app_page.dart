@@ -4,6 +4,7 @@ import '../screen/auth/login_screen.dart';
 import '../screen/auth/register_screen.dart';
 import '../screen/main_screen.dart';
 import 'app_route.dart';
+import '../binding/main_binding.dart';
 
 class AppPage {
   const AppPage._();
@@ -20,6 +21,7 @@ class AppPage {
     GetPage<dynamic>(
       name: AppRoute.main,
       page: () => const MainScreen(),
+      binding: MainBinding(),
     ),
   ];
 }
