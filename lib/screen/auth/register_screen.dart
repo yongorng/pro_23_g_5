@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../services/api_client.dart';
 import '../../theme/app_color.dart';
+import '../../route/app_route.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -68,7 +69,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         colorText: Colors.white,
       );
 
-      Get.offNamed('/login');
+      Get.offNamed(AppRoute.login);
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       _showError(message);
@@ -110,7 +111,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColor.textPrimary),
-          onPressed: _loading ? null : () => Get.offNamed('/login'),
+          onPressed: _loading ? null : () => Get.offNamed(AppRoute.login),
         ),
         title: const Text(
           'Create Account',
@@ -228,7 +229,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: _loading ? null : () => Get.offNamed('/login'),
+                    onPressed: _loading ? null : () => Get.offNamed(AppRoute.login),
                     child: const Text('Already have an account? Login'),
                   ),
                 ],
