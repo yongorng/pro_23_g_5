@@ -182,6 +182,11 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                     ),
                   ),
+                  const SizedBox(height: 14),
+                  TextButton(
+                    onPressed: _loading ? null : () => Get.toNamed('/register'),
+                    child: const Text("Don't have an account? Register"),
+                  ),
                 ],
               ),
             ),
