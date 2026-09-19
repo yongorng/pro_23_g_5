@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 
 import '../controller/main_controller.dart';
 import '../controller/post_controller.dart';
+import '../controller/user_controller.dart';
 
 class MainBinding extends Bindings {
   @override
@@ -12,6 +13,10 @@ class MainBinding extends Bindings {
 
     if (!Get.isRegistered<PostController>()) {
       Get.lazyPut<PostController>(() => PostController());
+    }
+
+    if (!Get.isRegistered<UserController>()) {
+      Get.lazyPut<UserController>(() => UserController());
     }
   }
 }
