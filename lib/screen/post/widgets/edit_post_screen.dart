@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
@@ -30,7 +29,6 @@ class _EditPostScreenState extends State<EditPostScreen> {
 
   // ✅ ៣. បន្ថែម Variable សម្រាប់រក្សាទុករូបភាពជា Bytes (សម្រាប់ Web)
   final Rx<Uint8List?> _imageBytes = Rx<Uint8List?>(null);
-  File? _imageFile;
 
   @override
   void initState() {
@@ -65,7 +63,7 @@ class _EditPostScreenState extends State<EditPostScreen> {
         _imageBytes.value = bytes;
         _imagePath.value = image.path;
       } else {
-        _imageFile = File(image.path);
+        _imageBytes.value = await image.readAsBytes();
         _imagePath.value = image.path;
       }
     }
@@ -98,8 +96,8 @@ class _EditPostScreenState extends State<EditPostScreen> {
       if (widget.post.id != null) {
         if (kIsWeb && _imageBytes.value != null) {
           await controller.uploadPostImageFromBytes(widget.post.id!, _imageBytes.value!);
-        } else if (_imageFile != null) {
-          await controller.uploadPostImage(widget.post.id!, _imageFile!);
+        } else if (_imageBytes.value != null) {
+          await controller.uploadPostImageFromBytes(widget.post.id!, _imageBytes.value!);
         }
       }
 
