@@ -79,7 +79,7 @@ class PostCard extends StatelessWidget {
           child: Image.network(
             post.imageUrl!,
             fit: BoxFit.cover,
-            errorBuilder: (_, _, ___) => _buildDefaultIcon(),
+            errorBuilder: (_, _, _) => _buildDefaultIcon(),
           ),
         ),
       );
