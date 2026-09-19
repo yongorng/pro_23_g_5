@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../utils/token_storage.dart';
+import '../route/app_route.dart';
 
 class ApiClient {
   static const baseUrl = 'https://flutter-api.janrent.com';
@@ -89,10 +90,10 @@ class ApiClient {
 
     if (status == 401) {
       _tokenStorage.clear();
-      if (Get.currentRoute != '/login') {
+      if (Get.currentRoute != AppRoute.login) {
         Future.microtask(() {
-          if (Get.currentRoute != '/login') {
-            Get.offAllNamed('/login');
+          if (Get.currentRoute != AppRoute.login) {
+            Get.offAllNamed(AppRoute.login);
             Get.snackbar(
               'Session expired',
               'Please sign in again.',
