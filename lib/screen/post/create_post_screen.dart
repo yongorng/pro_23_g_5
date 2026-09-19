@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -42,6 +40,7 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
         _imagePath.value = image.path;
         debugPrint('🌐 Web Image selected');
       } else {
+        _imageBytes.value = await image.readAsBytes();
         _imagePath.value = image.path;
         debugPrint('📱 Mobile Image selected: ${image.path}');
       }
@@ -97,11 +96,9 @@ class _CreatePostScreenState extends State<CreatePostScreen> {
           // សម្រាប់ Web: ប្រើ Bytes
           await controller.uploadPostImageFromBytes(createdPost.id!, _imageBytes.value!);
           debugPrint('✅ Image uploaded successfully (Web)');
-        } else if (_imagePath.value.isNotEmpty) {
-          // សម្រាប់ Mobile: ប្រើ File
-          final imageFile = File(_imagePath.value);
-          await controller.uploadPostImage(createdPost.id!, imageFile);
-          debugPrint('✅ Image uploaded successfully (Mobile)');
+        } else if (_imageBytes.value != null) {
+          await controller.uploadPostImageFromBytes(createdPost.id!, _imageBytes.value!);
+          debugPrint('✅ Image uploaded successfully');
         }
       }
 
