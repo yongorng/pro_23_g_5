@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../services/api_client.dart';
 import '../../utils/token_storage.dart';
 import '../../theme/app_color.dart';
+import '../../route/app_route.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -54,7 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('Unable to save authentication token.');
       }
 
-      Get.offAllNamed('/main');
+      Get.offAllNamed(AppRoute.main);
     } catch (e) {
       final message = e.toString().replaceFirst('Exception: ', '');
       _showError(message);
@@ -184,7 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 14),
                   TextButton(
-                    onPressed: _loading ? null : () => Get.toNamed('/register'),
+                    onPressed: _loading ? null : () => Get.toNamed(AppRoute.register),
                     child: const Text("Don't have an account? Register"),
                   ),
                 ],
