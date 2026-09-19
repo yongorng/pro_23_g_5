@@ -23,7 +23,7 @@ class PostController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchPosts();
+
   }
 
   Future<void> fetchPosts() async {
@@ -49,7 +49,6 @@ class PostController extends GetxController {
     }
   }
 
-
   void _updateVisiblePosts() {
     _visiblePosts.clear();
     final count = visibleCount.value > _allPosts.length
@@ -61,7 +60,6 @@ class PostController extends GetxController {
     }
   }
 
-
   Future<void> loadMorePosts() async {
     if (isLoadingMore.value) return;
 
@@ -70,9 +68,7 @@ class PostController extends GetxController {
     try {
       await Future.delayed(const Duration(milliseconds: 100));
 
-
       if (visibleCount.value >= _allPosts.length) {
-
         visibleCount.value = 10;
         debugPrint('🔄 Looping back to start! Showing 10/${_allPosts.length}');
 
@@ -82,7 +78,6 @@ class PostController extends GetxController {
             backgroundColor: AppColor.primary,
             colorText: Colors.white);
       } else {
-
         visibleCount.value += loadIncrement;
         if (visibleCount.value > _allPosts.length) {
           visibleCount.value = _allPosts.length;

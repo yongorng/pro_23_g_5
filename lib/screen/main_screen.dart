@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../controller/main_controller.dart';
-import '../controller/user_controller.dart';
 import 'home/home_screen.dart';
 import 'post/post_screen.dart';
 import 'user/user_screen.dart';
@@ -15,9 +14,8 @@ class MainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
+    // ✅ ទុកតែ MainController ប៉ុណ្ណោះ (ព្រោះវាគ្រប់គ្រង Tab)
     final MainController controller = Get.put(MainController());
-    Get.put(UserController());
 
     return Scaffold(
       drawer: const CustomDrawer(),
@@ -25,8 +23,8 @@ class MainScreen extends StatelessWidget {
         index: controller.currentIndex.value,
         children: const [
           HomeScreen(),
-          PostScreen(),
-          UserScreen(),
+          PostScreen(),    // PostScreen នឹងហៅ fetchPosts() ខ្លួនឯងនៅពេលវាត្រូវបាន Build
+          UserScreen(),    // UserScreen នឹងហៅ fetchUsers() ខ្លួនឯង
           SettingScreen(),
         ],
       )),

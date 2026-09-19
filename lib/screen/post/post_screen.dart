@@ -21,9 +21,12 @@ class _PostScreenState extends State<PostScreen> {
   void initState() {
     super.initState();
 
-    _scrollController.addListener(() {
-      final controller = Get.find<PostController>();
 
+    final controller = Get.find<PostController>();
+    controller.fetchPosts();
+
+    // ២. Scroll Listener សម្រាប់ Load More
+    _scrollController.addListener(() {
       if (_searchQuery.value.isEmpty &&
           _scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
         controller.loadMorePosts();
@@ -36,7 +39,6 @@ class _PostScreenState extends State<PostScreen> {
     _scrollController.dispose();
     super.dispose();
   }
-
 
   Future<void> _onRefresh() async {
     await Future.delayed(const Duration(milliseconds: 500));
@@ -102,7 +104,6 @@ class _PostScreenState extends State<PostScreen> {
               ],
             ),
           ),
-
 
           Expanded(
             child: RefreshIndicator(

@@ -1,34 +1,66 @@
 import 'dart:io';
 import 'dart:typed_data';
-import '../services/api_service.dart';
+import 'package:dio/dio.dart';
+import 'package:get/get.dart' hide FormData, MultipartFile; // ✅ លាក់ FormData និង MultipartFile ពី get
+import '../services/api_client.dart';
 import '../model/post_model.dart';
 
 class PostRepository {
-  final ApiService _apiService = ApiService();
+  final ApiClient _api = Get.find<ApiClient>();
 
   Future<List<PostModel>> getPosts({int page = 0, int size = 100}) async {
-    return await _apiService.getPosts(page: page, size: size);
+    final data = await _api.get('/api/posts', query: {'page': page, 'size': size});
+    if (data.containsKey('data')) {
+      return (data['data'] as List).map((json) => PostModel.fromMap(json)).toList();
+    }
+    return [];
   }
 
   Future<PostModel> createPost(PostModel post) async {
-    return await _apiService.createPost(post);
+    final data = await _api.post('/api/posts', body: post.toMap());
+    return PostModel.fromMap(data['data'] ?? data);
   }
 
   Future<PostModel> updatePost(PostModel post) async {
-    return await _apiService.updatePost(post);
+    final data = await _api.put('/api/posts/${post.id}', body: post.toMap());
+    return PostModel.fromMap(data['data'] ?? data);
   }
 
   Future<void> deletePost(int id) async {
-    await _apiService.deletePost(id);
+    await _api.delete('/api/posts/$id');
   }
-
 
   Future<PostModel> uploadImage(int postId, File imageFile) async {
-    return await _apiService.uploadPostImage(postId, imageFile);
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(
+        imageFile.path,
+        filename: 'image.jpg',
+      ),
+    });
+
+    final response = await _api.dio.post(
+      '/api/posts/$postId/image',
+      data: formData,
+    );
+
+    final data = response.data;
+    return PostModel.fromMap(data['data'] ?? data);
   }
 
-
   Future<PostModel> uploadImageFromBytes(int postId, Uint8List imageBytes) async {
-    return await _apiService.uploadPostImageFromBytes(postId, imageBytes);
+    final formData = FormData.fromMap({
+      'file': MultipartFile.fromBytes(
+        imageBytes,
+        filename: 'image.jpg',
+      ),
+    });
+
+    final response = await _api.dio.post(
+      '/api/posts/$postId/image',
+      data: formData,
+    );
+
+    final data = response.data;
+    return PostModel.fromMap(data['data'] ?? data);
   }
 }

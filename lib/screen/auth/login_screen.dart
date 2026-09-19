@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../services/api_client.dart';
+import '../../utils/token_storage.dart';
 import '../../theme/app_color.dart';
-import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -13,244 +14,192 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final RxBool _isPasswordVisible = false.obs;
-  final RxBool _isLoading = false.obs;
+  bool _isLoading = false;
 
   Future<void> _login() async {
-    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
-      Get.snackbar('Error', 'Please fill in all fields',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.error,
-          colorText: AppColor.textOnPrimary);
-      return;
-    }
+    setState(() {
+      _isLoading = true;
+    });
 
-    _isLoading.value = true;
+    final api = Get.find<ApiClient>();
+    final storage = Get.find<TokenStorage>();
 
     try {
-      // TODO: ដាក់ Logic Login របស់អ្នកនៅទីនេះ
-      await Future.delayed(const Duration(seconds: 1)); // Mock delay
+      final response = await api.post('/auth/login', body: {
+        'username': _emailController.text.trim(),
+        'password': _passwordController.text.trim(),
+      });
 
-
-      Get.offAllNamed('/main');
-
-      Get.snackbar('Success', 'Login successful',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.success,
-          colorText: AppColor.textOnPrimary);
-    } catch (e) {
-      Get.snackbar('Error', 'Login failed: $e',
-          snackPosition: SnackPosition.BOTTOM,
+      if (response.containsKey('token')) {
+        await storage.save(response['token']);
+        Get.snackbar(
+          'Success',
+          'Login successful!',
+          backgroundColor: AppColor.primary,
+          colorText: AppColor.textOnPrimary,
+        );
+        Get.offAllNamed('/main');
+      } else {
+        Get.snackbar(
+          'Error',
+          'Invalid credentials',
           backgroundColor: AppColor.error,
-          colorText: AppColor.textOnPrimary);
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        e.toString(),
+        backgroundColor: AppColor.error,
+        colorText: Colors.white,
+      );
     } finally {
-      _isLoading.value = false;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColor.surface, // ✅ ប្រើពណ៌ផ្ទៃរបស់ App
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 60),
-
-
-              Center(
-                child: Container(
-                  width: 80,
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColor.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Icon(
-                    Icons.lock_outline,
-                    size: 40,
-                    color: AppColor.primary,
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-
-              Center(
-                child: Text(
-                  'សូមស្វាគមន៍មកកាន់កម្មវិធី',
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ✅ ប្រើ AppColor សម្រាប់ Title
+                const Text(
+                  'Welcome Back!',
                   style: TextStyle(
-                    fontSize: 24,
+                    fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: AppColor.textPrimary,
+                    color: AppColor.primary, // ✅ ពណ៌ដើមរបស់ App
                   ),
                   textAlign: TextAlign.center,
                 ),
-              ),
-
-              const SizedBox(height: 8),
-
-              Center(
-                child: Text(
-                  'ចូលទៅកាន់គណនីរបស់អ្នក',
+                const SizedBox(height: 8),
+                Text(
+                  'Sign in to continue',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 16,
                     color: AppColor.textSecondary,
                   ),
                   textAlign: TextAlign.center,
                 ),
-              ),
+                const SizedBox(height: 48),
 
-              const SizedBox(height: 40),
-
-              Text(
-                'អ៊ីមែល',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColor.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: 'admin@example.com',
-                  prefixIcon: Icon(Icons.email_outlined, color: AppColor.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColor.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-
-              Text(
-                'ពាក្យសម្ងាត់',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColor.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Obx(() => TextField(
-                controller: _passwordController,
-                obscureText: !_isPasswordVisible.value,
-                decoration: InputDecoration(
-                  hintText: '••••••••',
-                  prefixIcon: Icon(Icons.lock_outline, color: AppColor.primary),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible.value ? Icons.visibility : Icons.visibility_off,
-                      color: AppColor.textSecondary,
+                // ✅ Email Field
+                TextField(
+                  controller: _emailController,
+                  style: const TextStyle(color: AppColor.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Email / Username',
+                    labelStyle: TextStyle(color: AppColor.textSecondary),
+                    hintText: 'Enter your username',
+                    hintStyle: TextStyle(color: AppColor.textSecondary.withOpacity(0.5)),
+                    prefixIcon: Icon(Icons.person_outline, color: AppColor.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColor.primary),
                     ),
-                    onPressed: () {
-                      _isPasswordVisible.value = !_isPasswordVisible.value;
-                    },
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColor.primary.withOpacity(0.5)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColor.primary, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColor.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
                 ),
-              )),
+                const SizedBox(height: 16),
 
-              const SizedBox(height: 32),
+                // ✅ Password Field
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  style: const TextStyle(color: AppColor.textPrimary),
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    labelStyle: TextStyle(color: AppColor.textSecondary),
+                    hintText: 'Enter your password',
+                    hintStyle: TextStyle(color: AppColor.textSecondary.withOpacity(0.5)),
+                    prefixIcon: Icon(Icons.lock_outline, color: AppColor.primary),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColor.primary),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColor.primary.withOpacity(0.5)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: AppColor.primary, width: 2),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 32),
 
-
-              Obx(() => SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading.value ? null : _login,
+                // ✅ Login Button - ប្ើ AppColor.primary
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: AppColor.primary,
-                    foregroundColor: AppColor.textOnPrimary,
+                    disabledBackgroundColor: AppColor.primary.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 0,
+                    elevation: 2,
                   ),
-                  child: _isLoading.value
+                  child: _isLoading
                       ? const SizedBox(
-                    width: 24,
-                    height: 24,
+                    height: 22,
+                    width: 22,
                     child: CircularProgressIndicator(
-                      strokeWidth: 2,
                       color: Colors.white,
+                      strokeWidth: 2.5,
                     ),
                   )
-                      : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'ចូលទៅកាន់គណនី',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(Icons.arrow_forward, size: 20),
-                    ],
-                  ),
-                ),
-              )),
-
-              const SizedBox(height: 24),
-
-
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Get.to(() => const RegisterScreen());
-                  },
-                  child: Text(
-                    'មិនទាន់មានគណនី? ចុះឈ្មោះ',
+                      : const Text(
+                    'Login',
                     style: TextStyle(
-                      color: AppColor.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                      color: AppColor.textOnPrimary,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
                     ),
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+
+
+                Text(
+                  'Pro 23 App',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColor.textSecondary.withOpacity(0.7),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 }
