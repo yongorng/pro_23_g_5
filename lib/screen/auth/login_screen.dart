@@ -36,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final storage = Get.find<TokenStorage>();
 
       final response = await api.post(
-        '/auth/login',
+        '/api/auth/login',
         body: {
           'username': username,
           'password': password,
