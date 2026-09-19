@@ -193,6 +193,4 @@ class PostController extends GetxController {
           colorText: Colors.white);
       rethrow;
     }
-  }
-undefined
-}
+  }}
