@@ -193,7 +193,7 @@ class UserScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
 
-    final UserController controller = Get.put(UserController());
+    final UserController controller = Get.find<UserController>();
 
     return Scaffold(
       backgroundColor: Colors.white,
