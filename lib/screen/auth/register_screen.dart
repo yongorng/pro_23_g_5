@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import '../../services/api_client.dart';
 import '../../theme/app_color.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -10,244 +12,228 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final RxBool _isPasswordVisible = false.obs;
-  final RxBool _isLoading = false.obs;
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  bool _loading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   Future<void> _register() async {
-    if (_emailController.text.isEmpty ||
-        _nameController.text.isEmpty ||
-        _passwordController.text.isEmpty) {
-      Get.snackbar('Error', 'Please fill in all fields',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.error,
-          colorText: AppColor.textOnPrimary);
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (username.isEmpty || password.isEmpty || confirmPassword.isEmpty) {
+      _showError('Please fill in all fields.');
       return;
     }
 
-    if (_passwordController.text.length < 6) {
-      Get.snackbar('Error', 'Password must be at least 6 characters',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.error,
-          colorText: AppColor.textOnPrimary);
+    if (username.length < 3) {
+      _showError('Username must be at least 3 characters.');
       return;
     }
 
-    _isLoading.value = true;
+    if (password.length < 6) {
+      _showError('Password must be at least 6 characters.');
+      return;
+    }
+
+    if (password != confirmPassword) {
+      _showError('Passwords do not match.');
+      return;
+    }
+
+    setState(() => _loading = true);
 
     try {
-      // TODO: ដាក់ Logic Register របស់អ្នកនៅទីនេះ
-      await Future.delayed(const Duration(seconds: 1));
+      final api = Get.find<ApiClient>();
 
-      Get.back();
-      Get.snackbar('Success', 'Registration successful! Please login.',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.success,
-          colorText: AppColor.textOnPrimary);
+      await api.post(
+        '/auth/register',
+        body: {
+          'username': username,
+          'password': password,
+        },
+      );
+
+      if (!mounted) return;
+
+      Get.snackbar(
+        'Registration successful',
+        'Account created. Please login.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColor.success,
+        colorText: Colors.white,
+      );
+
+      Get.offNamed('/login');
     } catch (e) {
-      Get.snackbar('Error', 'Registration failed: $e',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: AppColor.error,
-          colorText: AppColor.textOnPrimary);
+      final message = e.toString().replaceFirst('Exception: ', '');
+      _showError(message);
     } finally {
-      _isLoading.value = false;
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _showError(String message) {
+    Get.snackbar(
+      'Registration failed',
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: AppColor.error,
+      colorText: Colors.white,
+      duration: const Duration(seconds: 4),
+    );
+  }
+
+  InputDecoration _decoration(String label, IconData icon, Widget? suffix) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, color: AppColor.primary),
+      suffixIcon: suffix,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      filled: true,
+      fillColor: Colors.white,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColor.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColor.surface,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColor.textPrimary),
-          onPressed: () => Get.back(),
+          onPressed: _loading ? null : () => Get.offNamed('/login'),
         ),
-        title: Text(
-          'បង្កើតគណនីថ្មី',
-          style: TextStyle(color: AppColor.textPrimary, fontWeight: FontWeight.bold),
+        title: const Text(
+          'Create Account',
+          style: TextStyle(color: AppColor.textPrimary),
         ),
         centerTitle: true,
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 20),
-
-
-              Text(
-                'អ៊ីមែលប្រើប្រាស់ (អ៊ីមែល)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColor.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: InputDecoration(
-                  hintText: 'student@example.com',
-
-                  prefixIcon: Icon(Icons.email_outlined, color: AppColor.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColor.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-
-              Text(
-                'ឈ្មោះហៅក្រៅ (និស្សិតជាប់)',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColor.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _nameController,
-                decoration: InputDecoration(
-                  hintText: 'ប្រសិនបើចាំបាច់ ដាក់ឈ្មោះនិងបង្ហាញខលួន',
-
-                  prefixIcon: Icon(Icons.person_outline, color: AppColor.primary),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColor.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-              ),
-
-              const SizedBox(height: 20),
-
-
-              Text(
-                'ពាក្យសម្ងាត់',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColor.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Obx(() => TextField(
-                controller: _passwordController,
-                obscureText: !_isPasswordVisible.value,
-                decoration: InputDecoration(
-                  hintText: 'Student@123',
-
-                  prefixIcon: Icon(Icons.lock_outline, color: AppColor.primary),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isPasswordVisible.value ? Icons.visibility : Icons.visibility_off,
-                      color: AppColor.textSecondary,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Create Account',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: AppColor.primary,
                     ),
-                    onPressed: () {
-                      _isPasswordVisible.value = !_isPasswordVisible.value;
-                    },
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Register a new account',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColor.textSecondary),
                   ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.shade300),
-                  ),
-
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: AppColor.primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                ),
-              )),
-
-              const SizedBox(height: 12),
-
-              Text(
-                'យ៉ាងហោចណាស់ ៤ តួអក្សរ ដោយមានអក្សរធំ អក្សរតូច លេខ និងសញ្ញាពិសេស។',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColor.textSecondary,
-                ),
-              ),
-
-              const SizedBox(height: 32),
-
-
-              Obx(() => SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _isLoading.value ? null : _register,
-                  style: ElevatedButton.styleFrom(
-
-                    backgroundColor: AppColor.primary,
-                    foregroundColor: AppColor.textOnPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  const SizedBox(height: 32),
+                  TextField(
+                    controller: _usernameController,
+                    enabled: !_loading,
+                    textInputAction: TextInputAction.next,
+                    decoration: _decoration(
+                      'Username',
+                      Icons.person_outline,
+                      null,
                     ),
-                    elevation: 0,
                   ),
-                  child: _isLoading.value
-                      ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.person_add, size: 20),
-                      SizedBox(width: 8),
-                      Text(
-                        'ចុះឈ្មោះ',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _passwordController,
+                    enabled: !_loading,
+                    obscureText: _obscurePassword,
+                    textInputAction: TextInputAction.next,
+                    decoration: _decoration(
+                      'Password',
+                      Icons.lock_outline,
+                      IconButton(
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              )),
-            ],
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: _confirmPasswordController,
+                    enabled: !_loading,
+                    obscureText: _obscureConfirmPassword,
+                    onSubmitted: (_) => _register(),
+                    decoration: _decoration(
+                      'Confirm Password',
+                      Icons.lock_reset_outlined,
+                      IconButton(
+                        onPressed: () => setState(
+                          () => _obscureConfirmPassword =
+                              !_obscureConfirmPassword,
+                        ),
+                        icon: Icon(
+                          _obscureConfirmPassword
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  SizedBox(
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _register,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColor.primary,
+                        foregroundColor: AppColor.textOnPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.5,
+                              ),
+                            )
+                          : const Text(
+                              'Register',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton(
+                    onPressed: _loading ? null : () => Get.offNamed('/login'),
+                    child: const Text('Already have an account? Login'),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -256,9 +242,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _nameController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 }
