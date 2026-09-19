@@ -17,6 +17,17 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
 
   Future<void> _login() async {
+    if (_emailController.text.trim().isEmpty ||
+        _passwordController.text.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Please enter your username and password',
+        backgroundColor: AppColor.error,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -27,11 +38,28 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       final response = await api.post('/auth/login', body: {
         'username': _emailController.text.trim(),
-        'password': _passwordController.text.trim(),
+        'password': _passwordController.text,
       });
 
-      if (response.containsKey('token')) {
-        await storage.save(response['token']);
+      final dynamic data = response['data'] is Map
+          ? response['data']
+          : response;
+
+      final dynamic rawToken = data['token'] ??
+          data['access_token'] ??
+          data['accessToken'];
+
+      final String? token = rawToken is String
+          ? rawToken.trim()
+          : rawToken?.toString();
+
+      if (token != null && token.isNotEmpty) {
+        await storage.save(token);
+
+        if (!storage.hasToken) {
+          throw Exception('Unable to save authentication token');
+        }
+
         Get.snackbar(
           'Success',
           'Login successful!',
@@ -42,7 +70,7 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         Get.snackbar(
           'Error',
-          'Invalid credentials',
+          'Login succeeded but no authentication token was returned',
           backgroundColor: AppColor.error,
           colorText: Colors.white,
         );
@@ -64,9 +92,16 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColor.surface, // ✅ ប្រើពណ៌ផ្ទៃរបស់ App
+      backgroundColor: AppColor.surface,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -75,13 +110,12 @@ class _LoginScreenState extends State<LoginScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // ✅ ប្រើ AppColor សម្រាប់ Title
                 const Text(
                   'Welcome Back!',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
-                    color: AppColor.primary, // ✅ ពណ៌ដើមរបស់ App
+                    color: AppColor.primary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -95,8 +129,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 48),
-
-                // ✅ Email Field
                 TextField(
                   controller: _emailController,
                   style: const TextStyle(color: AppColor.textPrimary),
@@ -104,27 +136,35 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Email / Username',
                     labelStyle: TextStyle(color: AppColor.textSecondary),
                     hintText: 'Enter your username',
-                    hintStyle: TextStyle(color: AppColor.textSecondary.withOpacity(0.5)),
-                    prefixIcon: Icon(Icons.person_outline, color: AppColor.primary),
+                    hintStyle: TextStyle(
+                      color: AppColor.textSecondary.withOpacity(0.5),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.person_outline,
+                      color: AppColor.primary,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColor.primary),
+                      borderSide: const BorderSide(color: AppColor.primary),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColor.primary.withOpacity(0.5)),
+                      borderSide: BorderSide(
+                        color: AppColor.primary.withOpacity(0.5),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColor.primary, width: 2),
+                      borderSide: const BorderSide(
+                        color: AppColor.primary,
+                        width: 2,
+                      ),
                     ),
                     filled: true,
                     fillColor: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 16),
-
-                // ✅ Password Field
                 TextField(
                   controller: _passwordController,
                   obscureText: true,
@@ -133,33 +173,42 @@ class _LoginScreenState extends State<LoginScreen> {
                     labelText: 'Password',
                     labelStyle: TextStyle(color: AppColor.textSecondary),
                     hintText: 'Enter your password',
-                    hintStyle: TextStyle(color: AppColor.textSecondary.withOpacity(0.5)),
-                    prefixIcon: Icon(Icons.lock_outline, color: AppColor.primary),
+                    hintStyle: TextStyle(
+                      color: AppColor.textSecondary.withOpacity(0.5),
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.lock_outline,
+                      color: AppColor.primary,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColor.primary),
+                      borderSide: const BorderSide(color: AppColor.primary),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColor.primary.withOpacity(0.5)),
+                      borderSide: BorderSide(
+                        color: AppColor.primary.withOpacity(0.5),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: AppColor.primary, width: 2),
+                      borderSide: const BorderSide(
+                        color: AppColor.primary,
+                        width: 2,
+                      ),
                     ),
                     filled: true,
                     fillColor: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 32),
-
-                // ✅ Login Button - ប្ើ AppColor.primary
                 ElevatedButton(
                   onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     backgroundColor: AppColor.primary,
-                    disabledBackgroundColor: AppColor.primary.withOpacity(0.5),
+                    disabledBackgroundColor:
+                        AppColor.primary.withOpacity(0.5),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -167,26 +216,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   child: _isLoading
                       ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2.5,
-                    ),
-                  )
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
                       : const Text(
-                    'Login',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: AppColor.textOnPrimary,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
+                          'Login',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: AppColor.textOnPrimary,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 16),
-
-
                 Text(
                   'Pro 23 App',
                   style: TextStyle(
