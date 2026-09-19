@@ -52,7 +52,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final api = Get.find<ApiClient>();
 
       await api.post(
-        '/auth/register',
+        '/api/auth/register',
         body: {
           'username': username,
           'password': password,
