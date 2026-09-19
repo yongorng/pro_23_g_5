@@ -192,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> {
               return SliverList(delegate: SliverChildBuilderDelegate((context, index) {
                 final post = posts[index];
                 return Card(margin: const EdgeInsets.only(bottom: 12), child: ListTile(
-                  leading: CircleAvatar(backgroundColor: AppColor.primary, child: post.imageUrl != null && post.imageUrl!.isNotEmpty ? ClipOval(child: Image.network(post.imageUrl!, fit: BoxFit.cover, width: 40, height: 40, errorBuilder: (_, _, ___) => const Icon(Icons.article, color: AppColor.textOnPrimary))) : const Icon(Icons.article, color: AppColor.textOnPrimary)),
+                  leading: CircleAvatar(backgroundColor: AppColor.primary, child: post.imageUrl != null && post.imageUrl!.isNotEmpty ? ClipOval(child: Image.network(post.imageUrl!, fit: BoxFit.cover, width: 40, height: 40, errorBuilder: (_, _, _) => const Icon(Icons.article, color: AppColor.textOnPrimary))) : const Icon(Icons.article, color: AppColor.textOnPrimary)),
                   title: Text(post.title, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColor.textPrimary)),
                   subtitle: Text(post.description.isNotEmpty ? (post.description.length > 50 ? '${post.description.substring(0, 50)}...' : post.description) : 'No description', style: const TextStyle(color: AppColor.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
                   isThreeLine: true,
